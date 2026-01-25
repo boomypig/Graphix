@@ -20,8 +20,7 @@
 
 import { Circle } from "./circles.js";
 import { initShaderProgram } from "./shader.js";
-main();
-async function main() {
+async function main(numCircles) {
   console.log("connection good");
   //get the canvas from the html
   const canvas = document.getElementById("webcanvas");
@@ -104,7 +103,6 @@ async function main() {
   mat4.ortho(projectionMatrix, xlow, xhigh, ylow, yhigh, -1, 1);
   gl.uniformMatrix4fv(ProjectionMatrixUniformLocation, false, projectionMatrix);
 
-  const numCircles = 8;
 
   const circleArray = [];
   for (let i = 0; i < numCircles; i++) {
@@ -134,6 +132,14 @@ async function main() {
 
   requestAnimationFrame(redraw);
 }
+const numCircles = document.getElementById("circNumber")
+const subButtton = document.getElementById("submitButton")
+
+function changCircleAmount(){
+  main(numCircles.value)
+  console.log("should run main")
+}
+subButtton.addEventListener("click", changCircleAmount)
 
 // //THIS HAS BEEN MOVED TO SHADER.JS
 // function initShaderProgram(gl, vsSource, fsSource) {
