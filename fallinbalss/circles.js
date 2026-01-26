@@ -15,8 +15,8 @@ class Circle {
     const maxy = yhigh - this.size;
     this.y = miny + Math.random() * (maxy - miny);
 
-    this.dx = Math.random() * 2 ;
-    this.dy = Math.random() ;
+    this.dx = Math.random()*2+2;
+    this.dy = Math.random()*2+2;
     if (Math.random() < 0.5) {
       this.dy = -this.dy;
     }

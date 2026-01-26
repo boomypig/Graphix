@@ -1,4 +1,6 @@
-//MOVED TO RESPECTive FRAGMENT AND VERTEX TXT FILES
+
+
+// MOVED TO RESPECTive FRAGMENT AND VERTEX TXT FILES
 // const vertexShader = `
 //     precision mediump float;
 
@@ -137,7 +139,6 @@ const subButtton = document.getElementById("submitButton")
 
 function changCircleAmount(){
   main(numCircles.value)
-  console.log("should run main")
 }
 subButtton.addEventListener("click", changCircleAmount)
 
