@@ -1,4 +1,4 @@
-body {
+/* body {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -22,14 +22,14 @@ button {
 canvas {
     display: block;
     border: 1px solid #ccc;
-}
+} */
 
 /* Group input and button at the top */
-body > input,
+/* body > input,
 body > button {
     margin-top: auto;
 }
 
 body > canvas {
     margin-top: 20px;
-}
+} */
