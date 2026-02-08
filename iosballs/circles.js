@@ -3,7 +3,7 @@ import { collideParticles } from "./collisions.js";
 const BALL_WALL_FRICTION = 0.8;
 const AIR_FRICTION = 0.999;
 const BALL_BALL_FRICTION = 0.9;
-const GRAVITY = -8;
+const GRAVITY_MAG = 8;
 class Circle {
   constructor(xhigh, xlow, yhigh, ylow) {
     this.color = [Math.random(), Math.random(), Math.random(), 1];
@@ -88,10 +88,12 @@ class Circle {
     }
   }
 
-  update(DT) {
-    this.dy += GRAVITY * DT;
+  update(DT, gravity) {
+    this.dx += gravity[0] * GRAVITY_MAG * DT;
+    this.dy += gravity[1] * GRAVITY_MAG * DT;
     this.dy *= AIR_FRICTION;
     this.dx *= AIR_FRICTION;
+
     this.wallCollision(DT);
 
     //update gravity|friction

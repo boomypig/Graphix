@@ -126,7 +126,7 @@ async function main() {
       }
     }
     for (let i = 0; i < circleArray.length; i++) {
-      circleArray[i].update(DT);
+      circleArray[i].update(DT,gravity);
     }
     for (let i = 0; i < circleArray.length; i++) {
       circleArray[i].draw(gl, shaderProgram);
