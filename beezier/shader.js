@@ -1,43 +1,40 @@
 function initShaderProgram(gl, vsSource, fsSource) {
-  const vertexShader = loadShader(gl, vsSource, gl.VERTEX_SHADER);
-  const fragmentShader = loadShader(gl, fsSource, gl.FRAGMENT_SHADER);
-  const shaderProgram = gl.createProgram();
+  let vertexShader = loadshader(gl, gl.VERTEX_SHADER, vsSource);
+  let fragmentShader = loadshader(gl, gl.FRAGMENT_SHADER, fsSource);
 
-  gl.attatchShader(shaderProgram, vertexShader);
-  gl.attatchShader(shaderProgram, fragmentShader);
-  gl.linkShader(shaderProgram);
+  const shaderProgram = gl.createProgram();
+  gl.attachShader(shaderProgram, vertexShader);
+  gl.attachShader(shaderProgram, fragmentShader);
+  gl.linkProgram(shaderProgram);
+
   if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
     alert(
-      `something wrong with linking ${gl.getProgramInfoLog(shaderProgram)}`,
+      `cant initialize shader program ${gl.getShaderInfoLog(shaderProgram)}`,
     );
     return null;
   }
-
   gl.validateProgram(shaderProgram);
+
   if (!gl.getProgramParameter(shaderProgram, gl.VALIDATE_STATUS)) {
     console.error(
-      "ERROR validating program!",
+      `unable to validate shader `,
       gl.getProgramInfoLog(shaderProgram),
     );
-    return;
   }
-
   gl.useProgram(shaderProgram);
-
   return shaderProgram;
 }
-function loadShader(gl, source, type) {
+
+function loadshader(gl, type, source) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
-
-  if (!gl.shaderParameter(shader, gl.COMPILE_STATUS)) {
-    alert(
-      `something wrong with compiling shader ${gl.getShaderInfoLog(shader)}`,
-    );
-    gl.deleteShader();
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    alert(`error with compiling shader ${gl.getShaderInfoLog(shader)}`);
+    gl.deleteShader(shader);
     return null;
   }
   return shader;
 }
+
 export { initShaderProgram };
