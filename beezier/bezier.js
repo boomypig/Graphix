@@ -1,9 +1,10 @@
 import { Point2 } from "./point2.js";
 
 export class Bezier {
-  constructor(p0, p1, p2, p3) {
-    this.p = [p0, p1, p2, p3]; // array of 4 Point2s
-    this.pickRadius = 0.04; // in clip space (tune this)
+  constructor(p0, p1, p2, p3, color = [1, 1, 1, 1], pickRadiusWorld = 0.4) {
+    this.p = [p0, p1, p2, p3];
+    this.color = color;
+    this.pickRadius = pickRadiusWorld;
   }
 
   setPoint(i, x, y) {
@@ -86,6 +87,43 @@ export class Bezier {
     // If you *must* draw circles, you can reuse your circle method around each point.
     gl.drawArrays(gl.POINTS, 0, 4);
 
+    gl.deleteBuffer(buf);
+  }
+  drawControlPolygon(gl, positionAttribLoc) {
+    const verts = new Float32Array([
+      this.p[0].x,
+      this.p[0].y,
+      this.p[1].x,
+      this.p[1].y,
+      this.p[2].x,
+      this.p[2].y,
+      this.p[3].x,
+      this.p[3].y,
+    ]);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+
+    gl.vertexAttribPointer(positionAttribLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(positionAttribLoc);
+
+    gl.drawArrays(gl.LINE_STRIP, 0, 4);
+    gl.deleteBuffer(buf);
+  }
+
+  // Add:
+  drawSingleControlPoint(gl, positionAttribLoc, i) {
+    const verts = new Float32Array([this.p[i].x, this.p[i].y]);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+
+    gl.vertexAttribPointer(positionAttribLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(positionAttribLoc);
+
+    gl.drawArrays(gl.POINTS, 0, 1);
     gl.deleteBuffer(buf);
   }
 }
