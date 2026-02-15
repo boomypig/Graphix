@@ -1,110 +1,127 @@
-import { Circle } from "./circles.js";
-import { collideParticles } from "./collisions.js";
-import { Point2 } from "./piont2.js";
+// main.js (Bezier Curves + drag control points + world-space boundaries)
+import { Point2 } from "./point2.js";
+import { Bezier } from "./bezier.js";
 import { initShaderProgram } from "./shader.js";
-main();
-async function main() {
-  console.log("connection good");
-  //get the canvas from the html
-  const canvas = document.getElementById("webcanvas");
-  //connect to webgl library
-  const gl = canvas.getContext("webgl");
-  //check that it is good
-  if (!gl) {
-    alert("your browser doesn't support html5");
-  }
-  //clear the color and its buffer bit
-  gl.clearColor(0.3, 0.2, 0.2, 1.0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  //init the shader program
-  //go make initshaderProgram
+main();
+
+async function main() {
+  const canvas = document.getElementById("webcanvas");
+  const gl = canvas.getContext("webgl");
+  if (!gl) {
+    alert("WebGL not supported");
+    return;
+  }
+
+  // Compile/link shaders
   const vertexShader = await (await fetch("simple.vs")).text();
   const fragmentShader = await (await fetch("simple.fs")).text();
   const shaderProgram = initShaderProgram(gl, vertexShader, fragmentShader);
-
   gl.useProgram(shaderProgram);
 
-  const ProjectionMatrixUniformLocation = gl.getUniformLocation(
-    shaderProgram,
-    "uProjectionMatrix",
-  );
-
+  // === World boundaries (like your circles program) ===
   const aspect = canvas.clientWidth / canvas.clientHeight;
-  const projectionMatrix = mat4.create();
   const yhigh = 10;
   const ylow = -yhigh;
   const xlow = ylow * aspect;
   const xhigh = yhigh * aspect;
+
+  // Upload BOTH matrices (your shader multiplies by both)
+  const uProj = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
+  const uMV = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
+
+  const projectionMatrix = mat4.create();
   mat4.ortho(projectionMatrix, xlow, xhigh, ylow, yhigh, -1, 1);
-  gl.uniformMatrix4fv(ProjectionMatrixUniformLocation, false, projectionMatrix);
+  gl.uniformMatrix4fv(uProj, false, projectionMatrix);
 
-  const circleArray = [];
-  let i = 0;
-  let failures = 0;
-  addEventListener("click", makeCircle);
+  const modelViewMatrix = mat4.create(); // identity
+  gl.uniformMatrix4fv(uMV, false, modelViewMatrix);
 
-  function makeCircle(event) {
-    console.log("click");
-    const xWorld =
-      xlow + (event.offsetX / gl.canvas.clientWidth) * (xhigh - xlow);
-    const yWorld =
-      ylow +
-      ((gl.canvas.clientHeight - event.offsetY) / gl.canvas.clientHeight) *
-        (yhigh - ylow);
-    console.log(xWorld, yWorld);
+  // Attribute location
+  const aPos = gl.getAttribLocation(shaderProgram, "vertPosition");
 
-    const c = new Circle(xhigh, xlow, yhigh, ylow, xWorld, yWorld);
-    let intersect = false;
-    for (let j = 0; j < circleArray.length; j++) {
-      const distance =
-        (c.x - circleArray[j].x) ** 2 + (c.y - circleArray[j].y) ** 2;
-      if (distance < (c.radius + circleArray[j].radius) ** 2) {
-        intersect = true;
-      }
-    }
-    if (!intersect) {
-      circleArray.push(c);
-      i += 1;
-    } else {
-      failures += 1;
-    }
+  // One default Bezier curve (in WORLD coordinates now)
+  const curve = new Bezier(
+    new Point2(xlow * 0.6, ylow * 0.2),
+    new Point2(xlow * 0.2, yhigh * 0.7),
+    new Point2(xhigh * 0.2, ylow * 0.7),
+    new Point2(xhigh * 0.6, yhigh * 0.2),
+  );
+
+  // === Mouse interaction ===
+  let mouseDown = false;
+  let pickedIndex = -1;
+
+  function mouseToWorld(e) {
+    const r = canvas.getBoundingClientRect();
+    const xPix = e.clientX - r.left;
+    const yPix = e.clientY - r.top;
+
+    // Map pixels -> world bounds
+    const xWorld = xlow + (xPix / r.width) * (xhigh - xlow);
+    const yWorld = ylow + ((r.height - yPix) / r.height) * (yhigh - ylow);
+    return { x: xWorld, y: yWorld };
   }
 
-  let previousTime = 0;
-  let stripsArray = [];
-  let j = 0;
-  let numStrips = 1;
-  while (j < numStrips) {
-    const s = new Point2(0, 0, 2, 0);
-    stripsArray.push(s);
-    j += 1;
-  }
+  window.addEventListener("mousedown", (e) => {
+    mouseDown = true;
+    const { x, y } = mouseToWorld(e);
+    pickedIndex = curve.isPicked(x, y);
+  });
 
-  function redraw(currentTime) {
+  window.addEventListener("mouseup", () => {
+    mouseDown = false;
+    pickedIndex = -1;
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!mouseDown || pickedIndex === -1) return;
+    const { x, y } = mouseToWorld(e);
+    curve.setPoint(pickedIndex, x, y);
+  });
+
+  // === Draw loop ===
+  function redraw() {
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.clearColor(0.3, 0.2, 0.2, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    currentTime *= 0.001;
-    let DT = currentTime - previousTime;
-    previousTime = currentTime;
-    if (DT > 0.05) DT = 0.05;
 
-    // const repeatCollisions = 3;
-    // for (let i = 0; i < repeatCollisions; i++) {
-    //   for (let j = 0; j < circleArray.length; j++) {
-    //     circleArray[j].updateCollisions(DT, circleArray, j);
-    //   }
-    // }
-    // for (let i = 0; i < circleArray.length; i++) {
-    //   circleArray[i].update(DT);
-    // }
-    // for (let i = 0; i < circleArray.length; i++) {
-    //   circleArray[i].draw(gl, shaderProgram);
-    // }
-    for (let i = 0; i < numStrips.length; i++) {
-      stripsArray[i].drawStrip(gl, shaderProgram);
-    }
+    // Optional: draw a boundary box (LINE_STRIP) so you "see" the world bounds
+    drawBounds(gl, aPos, xlow, xhigh, ylow, yhigh);
+
+    // Draw Bezier curve + control points
+    curve.drawCurve(gl, aPos);
+    curve.drawControlPoints(gl, aPos);
+
     requestAnimationFrame(redraw);
   }
 
   requestAnimationFrame(redraw);
+}
+
+// Helper: draw the world boundary rectangle
+function drawBounds(gl, aPos, xlow, xhigh, ylow, yhigh) {
+  const verts = new Float32Array([
+    xlow,
+    ylow,
+    xhigh,
+    ylow,
+    xhigh,
+    yhigh,
+    xlow,
+    yhigh,
+    xlow,
+    ylow,
+  ]);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(aPos);
+
+  gl.drawArrays(gl.LINE_STRIP, 0, 5);
+
+  gl.deleteBuffer(buf);
 }

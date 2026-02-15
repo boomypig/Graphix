@@ -166,4 +166,4 @@ function createCircleVertices(sides) {
   return vertices;
 }
 
-export { Circle, drawCircle };
+export { Circle };
