@@ -1,206 +1,448 @@
-import { Point2 } from "./point2.js";
-import { Bezier } from "./bezier.js";
 import { initShaderProgram } from "./shader.js";
+import {
+  drawCircle,
+  drawRectangle,
+  drawTriangle,
+  drawLineStrip,
+} from "./shapes2d.js";
+import { randomDouble } from "./random.js";
 
 main();
-
 async function main() {
-  const canvas = document.getElementById("webcanvas");
+  console.log("This is working");
+
+  //
+  // start gl
+  //
+  const canvas = document.getElementById("glcanvas");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // ADD BUTTON
+  const addCurveButton = document.createElement("button");
+  addCurveButton.innerText = "Add Curve";
+
+  addCurveButton.style.position = "absolute";
+  addCurveButton.style.top = "10px";
+  addCurveButton.style.left = "10px";
+  document.body.appendChild(addCurveButton);
+
+  // WEIGHT SLIDER
+  const sliderContainer = document.createElement("div");
+  sliderContainer.style.position = "absolute";
+  sliderContainer.style.display = "none";
+  sliderContainer.style.backgroundColor = "white";
+  sliderContainer.style.border = "1px solid black";
+  sliderContainer.style.padding = "10px";
+  sliderContainer.style.zIndex = "1000"; // Ensure it's above the canvas
+
+  const slider = document.createElement("input");
+  slider.type = "range";
+  slider.min = 0;
+  slider.max = 10;
+  slider.step = 0.1;
+
+  const minInput = document.createElement("input");
+  minInput.type = "number";
+  minInput.value = slider.min;
+  minInput.style.width = "60px";
+
+  const maxInput = document.createElement("input");
+  maxInput.type = "number";
+  maxInput.value = slider.max;
+  maxInput.style.width = "60px";
+
+  const valueDisplay = document.createElement("span");
+  valueDisplay.textContent = slider.value;
+
+  sliderContainer.appendChild(slider);
+  sliderContainer.appendChild(document.createElement("br"));
+  sliderContainer.appendChild(minInput);
+  sliderContainer.appendChild(maxInput);
+  sliderContainer.appendChild(document.createElement("br"));
+  sliderContainer.appendChild(valueDisplay);
+  document.body.appendChild(sliderContainer);
+
+  let currentCurve = null;
+  let currentWeightIndex = null;
+
   const gl = canvas.getContext("webgl");
   if (!gl) {
-    alert("WebGL not supported");
-    return;
+    alert("Your browser does not support WebGL");
   }
+  gl.clearColor(0.75, 0.85, 0.8, 1.0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  const vertexShader = await (await fetch("simple.vs")).text();
-  const fragmentShader = await (await fetch("simple.fs")).text();
-  const shaderProgram = initShaderProgram(gl, vertexShader, fragmentShader);
-  gl.useProgram(shaderProgram);
-  const { mat4 } = glMatrix;
+  //
+  // Create shaders
+  //
+  const vertexShaderText = await (await fetch("simple.vs")).text();
+  const fragmentShaderText = await (await fetch("simple.fs")).text();
+  const shaderProgram = initShaderProgram(
+    gl,
+    vertexShaderText,
+    fragmentShaderText,
+  );
 
-  // === World boundaries (same idea as your circles project) ===
+  //
+  // load a projection matrix onto the shader
+  //
+  const projectionMatrixUniformLocation = gl.getUniformLocation(
+    shaderProgram,
+    "uProjectionMatrix",
+  );
   const aspect = canvas.clientWidth / canvas.clientHeight;
-  const yhigh = 10;
-  const ylow = -yhigh;
-  const xlow = ylow * aspect;
-  const xhigh = yhigh * aspect;
-
-  // Upload BOTH matrices
-  const uProj = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
-  const uMV = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
-
   const projectionMatrix = mat4.create();
+  let yhigh = 10;
+  let ylow = -yhigh;
+  let xlow = ylow;
+  let xhigh = yhigh;
+  if (aspect >= 1) {
+    xlow *= aspect;
+    xhigh *= aspect;
+  } else {
+    ylow /= aspect;
+    yhigh /= aspect;
+  }
   mat4.ortho(projectionMatrix, xlow, xhigh, ylow, yhigh, -1, 1);
-  gl.uniformMatrix4fv(uProj, false, projectionMatrix);
+  gl.uniformMatrix4fv(projectionMatrixUniformLocation, false, projectionMatrix);
 
-  const modelViewMatrix = mat4.create(); // identity
-  gl.uniformMatrix4fv(uMV, false, modelViewMatrix);
+  //
+  // load a modelview matrix onto the shader
+  //
+  const modelViewMatrixUniformLocation = gl.getUniformLocation(
+    shaderProgram,
+    "uModelViewMatrix",
+  );
+  const modelViewMatrix = mat4.create();
+  gl.uniformMatrix4fv(modelViewMatrixUniformLocation, false, modelViewMatrix);
 
-  // Attribute + color uniform
-  const aPos = gl.getAttribLocation(shaderProgram, "vertPosition");
-  const uColor = gl.getUniformLocation(shaderProgram, "uColor");
+  //
+  // Create content to display
+  //
 
-  // === Curves storage ===
-  const curves = [];
+  let circleX = 5;
+  let circleY = 5;
+  let locked = false;
+  //for bezier, locked will equal [1,2,3,4] depending on which circle the mouse clicked on
+  //let clickedCurve = -1;
+  //let clicked Point = -1;
 
-  function randColor() {
-    // slightly bright colors so they show on your background
-    const r = 0.3 + 0.7 * Math.random();
-    const g = 0.3 + 0.7 * Math.random();
-    const b = 0.3 + 0.7 * Math.random();
-    return [r, g, b, 1.0];
+  class Point2 {
+    constructor(x = randomDouble(-10, 10), y = randomDouble(-10, 10)) {
+      this.x = x;
+      this.y = y;
+    }
   }
 
-  function clamp(v, lo, hi) {
-    return Math.max(lo, Math.min(hi, v));
+  class Bezier {
+    constructor(gl, shaderProgram) {
+      this.gl = gl;
+      this.shaderProgram = shaderProgram;
+      this.p0 = new Point2();
+      this.p1 = new Point2();
+      this.p2 = new Point2();
+      this.p3 = new Point2();
+
+      this.w0 = 1;
+      this.w1 = 1;
+      this.w2 = 1;
+      this.w3 = 1;
+
+      this.color = [Math.random(), Math.random(), Math.random(), 1];
+
+      this.picked = false;
+
+      this.points = [this.p0, this.p1, this.p2, this.p3];
+      //this.points = [this.p0, this.p1, this.p2]
+    }
+
+    evaluate(t) {
+      //let px = this.p0.x*(1-t)*(1-t)*(1-t) + 3*this.p1.x*(1-t)*(1-t)*t + 3*this.p2.x*(1-t)*t*t + this.p3.x*t*t*t;
+      //let py = this.p0.y*(1-t)*(1-t)*(1-t) + 3*this.p1.y*(1-t)*(1-t)*t + 3*this.p2.y*(1-t)*t*t + this.p3.y*t*t*t;
+
+      // let px = (this.p0.x*(1-t)*(1-t) + 2*this.p1.x*(1-t)*t + this.p2.x*t*t);
+      // let py = (this.p0.y*(1-t)*(1-t) + 2*this.p1.y*(1-t)*t + this.p2.y*t*t);
+
+      // let px = (w0*this.p0.x*(1-t)*(1-t) + w1*2*this.p1.x*(1-t)*t + w2*this.p2.x*t*t) / (w0*(1-t)*(1-t) + w1*2*t*(1-t) + w2*t*t);
+      // let py = (w0*this.p0.y*(1-t)*(1-t) + w1*2*this.p1.y*(1-t)*t + w2*this.p2.y*t*t) / (w0*(1-t)*(1-t) + w1*2*t*(1-t) + w2*t*t);
+
+      let px =
+        (this.w0 * this.p0.x * (1 - t) * (1 - t) * (1 - t) +
+          this.w1 * 3 * this.p1.x * (1 - t) * (1 - t) * t +
+          this.w2 * 3 * this.p2.x * (1 - t) * t * t +
+          this.w3 * this.p3.x * t * t * t) /
+        (this.w0 * (1 - t) * (1 - t) * (1 - t) +
+          this.w1 * 3 * (1 - t) * (1 - t) * t +
+          this.w2 * 3 * (1 - t) * t * t +
+          this.w3 * t * t * t);
+      let py =
+        (this.w0 * this.p0.y * (1 - t) * (1 - t) * (1 - t) +
+          this.w1 * 3 * this.p1.y * (1 - t) * (1 - t) * t +
+          this.w2 * 3 * this.p2.y * (1 - t) * t * t +
+          this.w3 * this.p3.y * t * t * t) /
+        (this.w0 * (1 - t) * (1 - t) * (1 - t) +
+          this.w1 * 3 * (1 - t) * (1 - t) * t +
+          this.w2 * 3 * (1 - t) * t * t +
+          this.w3 * t * t * t);
+
+      let p = new Point2(px, py);
+      return p;
+    }
+
+    drawCurve() {
+      let vertices = [];
+      for (let t = 0; t <= 1; t += 0.0125) {
+        let p = this.evaluate(t);
+        vertices.push(p.x, p.y);
+      }
+      drawLineStrip(this.gl, this.shaderProgram, vertices);
+    }
+
+    drawControlPoints() {
+      for (let p of this.points) {
+        drawCircle(this.gl, this.shaderProgram, p.x, p.y, 1, this.color);
+      }
+    }
+
+    isPicked(xWorld, yWorld) {
+      for (let p of this.points) {
+        const dist = Math.sqrt((xWorld - p.x) ** 2 + (yWorld - p.y) ** 2);
+        if (dist < 1) {
+          this.picked = p;
+          return 1;
+        }
+      }
+      return 0;
+    }
+
+    setPoint(xWorld, yWorld) {
+      this.picked.x = xWorld;
+      this.picked.y = yWorld;
+    }
   }
 
-  function makeNiceCurvePlacement(index) {
-    // place new curves in a “staggered” pattern so they don’t overlap
-    const spanX = xhigh - xlow;
-    const spanY = yhigh - ylow;
+  //
+  // Register Listeners
+  //
 
-    const offsetX = (index % 3) * (spanX * 0.12) - spanX * 0.12;
-    const offsetY = Math.floor(index / 3) * (spanY * 0.12) - spanY * 0.12;
-
-    const cx = (xlow + xhigh) * 0.5 + offsetX;
-    const cy = (ylow + yhigh) * 0.5 + offsetY;
-
-    const dx = spanX * 0.12;
-    const dy = spanY * 0.12;
-
-    return new Bezier(
-      new Point2(cx - 2 * dx, cy - 0.5 * dy),
-      new Point2(cx - 1 * dx, cy + 1.5 * dy),
-      new Point2(cx + 1 * dx, cy - 1.5 * dy),
-      new Point2(cx + 2 * dx, cy + 0.5 * dy),
-      randColor(), // <-- store curve color
-      // pick radius in WORLD units (bigger = easier to click)
-      // good default: ~2% of the smaller world dimension
-      Math.min(spanX, spanY) * 0.02,
-    );
-  }
-
-  // Start with 1 curve
-  curves.push(makeNiceCurvePlacement(0));
-
-  // Button: add more curves
-  const addBtn = document.getElementById("addCurveBtn");
-  addBtn.addEventListener("click", () => {
-    curves.push(makeNiceCurvePlacement(curves.length));
+  addCurveButton.addEventListener("click", () => {
+    curves.push(new Bezier(gl, shaderProgram));
   });
 
-  // === Picking state (Step 3 requirement) ===
-  let mouseDown = false;
-  let pickedCurveIndex = -1;
-  let pickedPointIndex = -1;
-
-  function mouseToWorld(e) {
-    const r = canvas.getBoundingClientRect();
-    const xPix = e.clientX - r.left;
-    const yPix = e.clientY - r.top;
-
-    const xWorld = xlow + (xPix / r.width) * (xhigh - xlow);
-    const yWorld = ylow + ((r.height - yPix) / r.height) * (yhigh - ylow);
-    return { x: xWorld, y: yWorld };
+  addEventListener("click", click);
+  function click(event) {
+    console.log("click");
+    const xWorld =
+      xlow + (event.offsetX / gl.canvas.clientWidth) * (xhigh - xlow);
+    const yWorld =
+      ylow +
+      ((gl.canvas.clientHeight - event.offsetY) / gl.canvas.clientHeight) *
+        (yhigh - ylow);
+    // Do whatever you want here, in World Coordinates.
   }
 
-  window.addEventListener("mousedown", (e) => {
-    mouseDown = true;
-    const { x, y } = mouseToWorld(e);
-
-    // Find the first curve/point hit (top-most = last curve feels nicer)
-    pickedCurveIndex = -1;
-    pickedPointIndex = -1;
-
-    for (let ci = curves.length - 1; ci >= 0; ci--) {
-      const pi = curves[ci].isPicked(x, y);
-      if (pi !== -1) {
-        pickedCurveIndex = ci;
-        pickedPointIndex = pi;
+  addEventListener("mousedown", mousedown);
+  function mousedown(event) {
+    console.log("click");
+    const xWorld =
+      xlow + (event.offsetX / gl.canvas.clientWidth) * (xhigh - xlow);
+    const yWorld =
+      ylow +
+      ((gl.canvas.clientHeight - event.offsetY) / gl.canvas.clientHeight) *
+        (yhigh - ylow);
+    // Do whatever you want here, in World Coordinates.
+    for (let curve of curves) {
+      if (curve.isPicked(xWorld, yWorld)) {
         break;
+      }
+    }
+  }
+
+  addEventListener("mouseup", mouseup);
+  function mouseup(event) {
+    console.log("click");
+    const xWorld =
+      xlow + (event.offsetX / gl.canvas.clientWidth) * (xhigh - xlow);
+    const yWorld =
+      ylow +
+      ((gl.canvas.clientHeight - event.offsetY) / gl.canvas.clientHeight) *
+        (yhigh - ylow);
+    // Do whatever you want here, in World Coordinates.
+    for (let curve of curves) {
+      if (curve.picked) {
+        curve.picked = false;
+      }
+    }
+  }
+
+  addEventListener("mousemove", mousemove);
+  function mousemove(event) {
+    const xWorld =
+      xlow + (event.offsetX / gl.canvas.clientWidth) * (xhigh - xlow);
+    const yWorld =
+      ylow +
+      ((gl.canvas.clientHeight - event.offsetY) / gl.canvas.clientHeight) *
+        (yhigh - ylow);
+    // Do whatever you want here, in World Coordinates.
+    for (let curve of curves) {
+      if (curve.picked) {
+        curve.setPoint(xWorld, yWorld);
+      }
+    }
+  }
+
+  canvas.addEventListener("contextmenu", function (event) {
+    event.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;
+    const offsetY = event.clientY - rect.top;
+
+    const xWorld = xlow + (offsetX / canvas.clientWidth) * (xhigh - xlow);
+    const yWorld =
+      ylow +
+      ((canvas.clientHeight - offsetY) / canvas.clientHeight) * (yhigh - ylow);
+
+    let found = false;
+    for (let curve of curves) {
+      if (curve.isPicked(xWorld, yWorld)) {
+        const index = curve.points.indexOf(curve.picked);
+        if (index === -1) continue;
+
+        currentCurve = curve;
+        currentWeightIndex = index;
+        const weight = curve[`w${index}`];
+
+        slider.value = weight;
+        minInput.value = slider.min;
+        maxInput.value = slider.max;
+        valueDisplay.textContent = weight;
+
+        const screenX = ((xWorld - xlow) / (xhigh - xlow)) * canvas.clientWidth;
+        const screenY =
+          canvas.clientHeight -
+          ((yWorld - ylow) / (yhigh - ylow)) * canvas.clientHeight;
+
+        sliderContainer.style.left = `${screenX + 10}px`;
+        sliderContainer.style.top = `${screenY - 10}px`;
+        sliderContainer.style.display = "block";
+
+        curve.picked = false; // Reset to prevent interference
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      sliderContainer.style.display = "none";
+      currentCurve = null;
+      currentWeightIndex = null;
+    }
+  });
+
+  slider.addEventListener("input", function () {
+    valueDisplay.textContent = slider.value;
+    if (currentCurve && currentWeightIndex !== null) {
+      currentCurve[`w${currentWeightIndex}`] = parseFloat(slider.value);
+    }
+  });
+
+  minInput.addEventListener("change", function () {
+    const newMin = parseFloat(minInput.value);
+    const currentMax = parseFloat(maxInput.value);
+    if (newMin > currentMax) {
+      alert("Min cannot be greater than max");
+      minInput.value = slider.min;
+      return;
+    }
+    slider.min = newMin;
+    if (slider.value < newMin) {
+      slider.value = newMin;
+      valueDisplay.textContent = newMin;
+      if (currentCurve && currentWeightIndex !== null) {
+        currentCurve[`w${currentWeightIndex}`] = newMin;
       }
     }
   });
 
-  window.addEventListener("mouseup", () => {
-    mouseDown = false;
-    pickedCurveIndex = -1;
-    pickedPointIndex = -1;
+  maxInput.addEventListener("change", function () {
+    const newMax = parseFloat(maxInput.value);
+    const currentMin = parseFloat(minInput.value);
+    if (newMax < currentMin) {
+      alert("Max cannot be less than min");
+      maxInput.value = slider.max;
+      return;
+    }
+    slider.max = newMax;
+    if (slider.value > newMax) {
+      slider.value = newMax;
+      valueDisplay.textContent = newMax;
+      if (currentCurve && currentWeightIndex !== null) {
+        currentCurve[`w${currentWeightIndex}`] = newMax;
+      }
+    }
   });
 
-  window.addEventListener("mousemove", (e) => {
-    if (!mouseDown) return;
-    if (pickedCurveIndex === -1 || pickedPointIndex === -1) return;
-
-    const { x, y } = mouseToWorld(e);
-
-    // Clamp inside world bounds so points don’t “disappear”
-    const cx = clamp(x, xlow, xhigh);
-    const cy = clamp(y, ylow, yhigh);
-
-    curves[pickedCurveIndex].setPoint(pickedPointIndex, cx, cy);
+  // Close slider when clicking outside
+  document.addEventListener("click", function (event) {
+    if (!sliderContainer.contains(event.target)) {
+      sliderContainer.style.display = "none";
+      currentCurve = null;
+      currentWeightIndex = null;
+    }
   });
 
-  function redraw() {
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clearColor(0.3, 0.2, 0.2, 1.0);
+  //
+  // Main render loop
+  //
+  let bezier = new Bezier(gl, shaderProgram);
+  let curves = [];
+  curves.push(bezier);
+
+  let previousTime = 0;
+  function redraw(currentTime) {
+    currentTime *= 0.001; // milliseconds to seconds
+    let DT = currentTime - previousTime;
+    if (DT > 0.1) DT = 0.1;
+    previousTime = currentTime;
+
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // Optional: draw world bounds so you can “see” the boundary box
-    gl.uniform4fv(uColor, new Float32Array([0.9, 0.9, 0.9, 1.0]));
-    drawBounds(gl, aPos, xlow, xhigh, ylow, yhigh);
+    //drawCircle(gl, shaderProgram, circleX, circleY, 1);
+    // drawRectangle(gl, shaderProgram, 0,0,2,1, [1,0,0,1]); // override the default color with red.
+    // drawTriangle(gl, shaderProgram, -1,0, -1,2, -2,3);
+    // drawLineStrip(gl, shaderProgram, [0,0,-1,-1,-2,-1])
 
-    for (let ci = 0; ci < curves.length; ci++) {
-      const c = curves[ci];
-
-      // Control polygon (light gray)
-      gl.uniform4fv(uColor, new Float32Array([0.8, 0.8, 0.8, 1.0]));
-      c.drawControlPolygon(gl, aPos);
-
-      // Curve (random per curve)
-      gl.uniform4fv(uColor, new Float32Array(c.color));
-      c.drawCurve(gl, aPos);
-
-      // Control points (white)
-      gl.uniform4fv(uColor, new Float32Array([1, 1, 1, 1]));
-      c.drawControlPoints(gl, aPos);
-
-      // Highlight picked control point (yellow)
-      if (ci === pickedCurveIndex && pickedPointIndex !== -1) {
-        gl.uniform4fv(uColor, new Float32Array([1, 1, 0, 1]));
-        c.drawSingleControlPoint(gl, aPos, pickedPointIndex);
-      }
+    for (let curve of curves) {
+      curve.drawCurve();
+      curve.drawControlPoints();
     }
 
     requestAnimationFrame(redraw);
   }
-
   requestAnimationFrame(redraw);
 }
 
-// ===== helpers =====
-function drawBounds(gl, aPos, xlow, xhigh, ylow, yhigh) {
-  const verts = new Float32Array([
-    xlow,
-    ylow,
-    xhigh,
-    ylow,
-    xhigh,
-    yhigh,
-    xlow,
-    yhigh,
-    xlow,
-    ylow,
-  ]);
+// parametric
+// points: A, B
+// P(T) = A(1-T) + BT
+// where T is the ratio [0,1] of the distance on line between A and B
 
-  const buf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+//where T is greater than 1
+//ex. A: T_0=5, B: T_1=8
+// if T < T_0:
+//		T = T_0
+// if T > T_1:
+//		T = T_1
+// ratio = (T - T_0)/(T_1 - T_0)
 
-  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-  gl.enableVertexAttribArray(aPos);
+//higher degree
+// deg 1: P(T) = P_0(1-T) + P_1(T)
+// deg 2: P(T) = P_0(1-T)^2 + 2 * P_1(1-T) + P_2(T^2)
+// deg 3: P(T) = P_0(1-T)^3 * T^0 + 3 * P_1(1-T)^2 * T^1 + 3 * P_2(1-T)^1 * T^2 + P_3(1-T)^0 * T^3
+// ^^^ Pascal's traingle: 1 3 3 1
+//possible test question: expand to deg 4
 
-  gl.drawArrays(gl.LINE_STRIP, 0, 5);
-  gl.deleteBuffer(buf);
-}
+//Continuity:
+// if we want to connect 2 different bezier curves, we use continuity points
+// where the connecting endpoints need to be the same(C_0), and their tangent needs to be the same(C_1) for the points to line up and transtion smoothly

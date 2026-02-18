@@ -7,11 +7,11 @@ class SeededRandom {
     return this.seed / 233280;
   }
 }
-const seededRandom = new SeededRandom(119);
+const seededRandom = new SeededRandom(5); //change this to get different seeds
 
 function myRandom() {
-  //   return Math.random(); // different random every time
-  return seededRandom.next(); // same random every time
+  return Math.random(); // different random every time
+  //return seededRandom.next(); // same random every time
 }
 
 function randomDouble(low, high) {
