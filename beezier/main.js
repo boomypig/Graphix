@@ -1,10 +1,5 @@
 import { initShaderProgram } from "./shader.js";
-import {
-  drawCircle,
-  drawRectangle,
-  drawTriangle,
-  drawLineStrip,
-} from "./shapes2d.js";
+import { drawCircle, drawLineStrip } from "./shapes2d.js";
 import { randomDouble } from "./random.js";
 
 main();
@@ -154,7 +149,6 @@ async function main() {
       this.picked = false;
 
       this.points = [this.p0, this.p1, this.p2, this.p3];
-      //this.points = [this.p0, this.p1, this.p2]
     }
 
     evaluate(t) {
