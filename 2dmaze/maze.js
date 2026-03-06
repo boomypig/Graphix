@@ -38,11 +38,11 @@ class Maze {
         this.cells[r].push(new Cell());
       }
     }
-    this.removeWalls(0, 0);
     this.start = Math.floor(Math.random() * this.width);
     this.end = Math.floor(Math.random() * this.width);
+    this.removeWalls(0, this.start);
     this.cells[0][this.start].b = false;
-    this.cells[3][this.end].t = false;
+    this.cells[this.height - 1][this.end].t = false;
   }
   draw(gl, shaderProgram) {
     for (let r = 0; r < this.height; r++) {
