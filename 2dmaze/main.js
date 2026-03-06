@@ -1,12 +1,7 @@
 import { initShaderProgram } from "./shader.js";
 import { Maze } from "./maze.js";
-import {
-  drawCircle,
-  drawRectangle,
-  drawTriangle,
-  drawLineStrip,
-  drawLines,
-} from "./shapes2d.js";
+import { Rat } from "./rat.js";
+import { drawRectangle } from "./shapes2d.js";
 
 main();
 async function main() {
@@ -34,13 +29,11 @@ async function main() {
     fragmentShaderText,
   );
 
-  const w = 15;
-  const h = 14;
-  const m = new Maze(w, h);
-
   //
   // load a projection matrix onto the shader
   //
+  const h = 16;
+  const w = 15;
   const projectionMatrixUniformLocation = gl.getUniformLocation(
     shaderProgram,
     "uProjectionMatrix",
@@ -168,6 +161,58 @@ async function main() {
   //
   // Create content to display
   //
+  let spinLeft = false;
+  let spinRight = false;
+  let scurryForward = false;
+  let scurryBackward = false;
+  let strafeLeft = false;
+  let strafeRight = false;
+
+  window.addEventListener("keydown", keyDown);
+  function keyDown(event) {
+    if (event.code == "KeyW") {
+      scurryForward = true;
+    }
+    if (event.code == "KeyS") {
+      scurryBackward = true;
+    }
+    if (event.code == "KeyQ") {
+      spinLeft = true;
+    }
+    if (event.code == "KeyE") {
+      spinRight = true;
+    }
+    if (event.code == "KeyA") {
+      strafeLeft = true;
+    }
+    if (event.code == "KeyD") {
+      strafeRight = true;
+    }
+  }
+  window.addEventListener("keyup", keyUp);
+  function keyUp(event) {
+    if (event.code == "KeyW") {
+      scurryForward = false;
+    }
+    if (event.code == "KeyS") {
+      scurryBackward = false;
+    }
+    if (event.code == "KeyQ") {
+      spinLeft = false;
+    }
+    if (event.code == "KeyE") {
+      spinRight = false;
+    }
+    if (event.code == "KeyA") {
+      strafeLeft = false;
+    }
+    if (event.code == "KeyD") {
+      strafeRight = false;
+    }
+  }
+
+  const m = new Maze(w, h);
+  const rat = new Rat(m.start + 0.5, 0.5, Math.PI / 2);
 
   //
   // Main render loop
@@ -175,9 +220,16 @@ async function main() {
   let previousTime = 0;
   function redraw(currentTime) {
     currentTime *= 0.001; // milliseconds to seconds
-    let DT = currentTime - previousTime;
-    if (DT > 0.1) DT = 0.1;
+    let DeltaT = currentTime - previousTime;
+    if (DeltaT > 0.1) DeltaT = 0.1;
     previousTime = currentTime;
+
+    if (spinLeft) rat.spinLeft(DeltaT);
+    if (scurryForward) rat.scurryForward(DeltaT, m);
+    if (scurryBackward) rat.scurryBackward(DeltaT, m);
+    if (spinRight) rat.spinRight(DeltaT);
+    if (strafeLeft) rat.strafeLeft(DeltaT, m);
+    if (strafeRight) rat.strafeRight(DeltaT, m);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // This will always fill the whole canvas with whatever was specified in gl.clearColor.
@@ -195,7 +247,7 @@ async function main() {
     //		This rectangle will fill the whole canvas when altering ortho to fix aspect ratio.
 
     m.draw(gl, shaderProgram);
-
+    rat.draw(gl, shaderProgram);
     requestAnimationFrame(redraw);
   }
   requestAnimationFrame(redraw);

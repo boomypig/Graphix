@@ -99,6 +99,29 @@ class Maze {
       }
     }
   }
+  isLegal(x, y, radius) {
+    const r = Math.floor(y);
+    const c = Math.floor(x);
+    const offsetX = x - c;
+    const offsetY = y - r;
+
+    // keep within the bounds of the maze:
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+
+    // Wall checks:
+    if (offsetX - radius < 0 && this.cells[r][c].l) return false;
+    if (offsetX + radius > 1 && this.cells[r][c].r) return false;
+    if (offsetY - radius < 0 && this.cells[r][c].b) return false;
+    if (offsetY + radius > 1 && this.cells[r][c].t) return false;
+
+    // Corner checks:
+    if (offsetX - radius < 0 && offsetY - radius < 0) return false;
+    if (offsetX - radius < 0 && offsetY + radius > 1) return false;
+    if (offsetX + radius > 1 && offsetY - radius < 0) return false;
+    if (offsetX + radius > 1 && offsetY + radius > 1) return false;
+
+    return true; // okay to be at x,y with a fatness of radius
+  }
 }
 
 export { Maze };
