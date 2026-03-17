@@ -162,23 +162,23 @@ async function main() {
       // let py = (w0*this.p0.y*(1-t)*(1-t) + w1*2*this.p1.y*(1-t)*t + w2*this.p2.y*t*t) / (w0*(1-t)*(1-t) + w1*2*t*(1-t) + w2*t*t);
 
       let px =
-        (this.w0 * this.p0.x * (1 - t) * (1 - t) * (1 - t) +
-          this.w1 * 3 * this.p1.x * (1 - t) * (1 - t) * t +
-          this.w2 * 3 * this.p2.x * (1 - t) * t * t +
-          this.w3 * this.p3.x * t * t * t) /
-        (this.w0 * (1 - t) * (1 - t) * (1 - t) +
-          this.w1 * 3 * (1 - t) * (1 - t) * t +
-          this.w2 * 3 * (1 - t) * t * t +
-          this.w3 * t * t * t);
+        (this.w0 * this.p0.x * (1 - t)**3 +
+          this.w1 * 3 * this.p1.x * (1 - t)**2 * t +
+          this.w2 * 3 * this.p2.x * (1 - t) * t**2 +
+          this.w3 * this.p3.x * t**3) /
+        (this.w0 * (1 - t)**3+
+          this.w1 * 3 * (1 - t)**2 * t +
+          this.w2 * 3 * (1 - t) * t**2 +
+          this.w3 * t**3);
       let py =
-        (this.w0 * this.p0.y * (1 - t) * (1 - t) * (1 - t) +
-          this.w1 * 3 * this.p1.y * (1 - t) * (1 - t) * t +
-          this.w2 * 3 * this.p2.y * (1 - t) * t * t +
-          this.w3 * this.p3.y * t * t * t) /
-        (this.w0 * (1 - t) * (1 - t) * (1 - t) +
-          this.w1 * 3 * (1 - t) * (1 - t) * t +
-          this.w2 * 3 * (1 - t) * t * t +
-          this.w3 * t * t * t);
+        (this.w0 * this.p0.y * (1 - t)**3 +
+          this.w1 * 3 * this.p1.y * (1 - t)**2 * t +
+          this.w2 * 3 * this.p2.y * (1 - t) * t**2 +
+          this.w3 * this.p3.y * t**3) /
+        (this.w0 * (1 - t)**3 +
+          this.w1 * 3 * (1 - t)**2 * t +
+          this.w2 * 3 * (1 - t) * t**2 +
+          this.w3 * t**3);
 
       let p = new Point2(px, py);
       return p;
