@@ -5,8 +5,9 @@ const AIR_FRICTION = 0.999;
 const BALL_BALL_FRICTION = 0.9;
 const GRAVITY = -8;
 class Circle {
-  constructor(xhigh, xlow, yhigh, ylow) {
-    this.color = [Math.random(), Math.random(), Math.random(), 1];
+  constructor(xhigh, xlow, yhigh, ylow,color) {
+    this.color = color
+    this.team = "r"
     this.sides = 64;
     this.xhigh = xhigh;
     this.xlow = xlow;
@@ -28,6 +29,9 @@ class Circle {
     }
     if (Math.random() < 0.5) {
       this.dx = -this.dx;
+    }
+    if(this.color[2]){
+      this.team = "b"
     }
   }
   wallCollision(DT) {
@@ -89,9 +93,14 @@ class Circle {
   }
 
   update(DT) {
-    this.dy += GRAVITY * DT;
     this.dy *= AIR_FRICTION;
     this.dx *= AIR_FRICTION;
+    if (this.team == "b"){
+      this.dy += -GRAVITY *DT
+      this.wallCollision(DT)
+      return;
+    }
+    this.dy += GRAVITY * DT;
     this.wallCollision(DT);
 
     //update gravity|friction

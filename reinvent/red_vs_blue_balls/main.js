@@ -39,11 +39,16 @@ async function main() {
 
   const circleArray = [];
   let i = 0;
-  const numCircles = 8
+  const numCircles = 10
   let failures = 0;
+  let color = null
 
   while (i < numCircles && failures < 1000) {
-    const c = new Circle(xhigh, xlow, yhigh, ylow);
+    color = [1,0,0,1]
+    if(i > 4){
+      color = [0,0,1,1]
+    }
+    const c = new Circle(xhigh, xlow, yhigh, ylow,color);
     let intersect = false;
     for (let j = 0; j < circleArray.length; j++) {
       const distance =
@@ -86,14 +91,4 @@ async function main() {
 
   requestAnimationFrame(redraw);
 }
-const numCircles = document.getElementById("circNumber");
-const subButtton = document.getElementById("submitButton");
-
-function changCircleAmount() {
-  const n = numCircles.valueAsNumber;
-  if (!Number.isFinite(n)) {
-    return;
-  }
-  main();
-}
-subButtton.addEventListener("click", changCircleAmount);
+main()
