@@ -137,16 +137,22 @@ async function main() {
       this.p0 = new Point2();
       this.p1 = new Point2();
       this.p2 = new Point2();
+      this.p3 = new Point2();
+      this.p4 = new Point2();
+      this.p5 = new Point2();
 
       this.w0 = 1;
       this.w1 = 1;
       this.w2 = 1;
+      this.w3 = 1;
+      this.w4 = 1;
+      this.w5 = 1;
 
       this.color = [Math.random(), Math.random(), Math.random(), 1];
 
       this.picked = false;
 
-      this.points = [this.p0, this.p1, this.p2];
+      this.points = [this.p0, this.p1, this.p2,this.p3,this.p4,this.p5];
     }
 
     evaluate(t) {
@@ -159,20 +165,33 @@ async function main() {
       // let px = (w0*this.p0.x*(1-t)*(1-t) + w1*2*this.p1.x*(1-t)*t + w2*this.p2.x*t*t) / (w0*(1-t)*(1-t) + w1*2*t*(1-t) + w2*t*t);
       // let py = (w0*this.p0.y*(1-t)*(1-t) + w1*2*this.p1.y*(1-t)*t + w2*this.p2.y*t*t) / (w0*(1-t)*(1-t) + w1*2*t*(1-t) + w2*t*t);
 
-      let px =
-        (this.w0 * this.p0.x * (1 - t)**3 +
-          this.w1 * 3 * this.p1.x * (1 - t)**2 * t +
-          this.w2 * 3 * this.p2.x * (1 - t) * t**2 )/
-        (this.w0 * (1 - t)**3+
-          this.w1 * 3 * (1 - t)**2 * t +
-          this.w2 * 3 * (1 - t) * t**2);
-      let py =
-        (this.w0 * this.p0.y * (1 - t)**3 +
-          this.w1 * 3 * this.p1.y * (1 - t)**2 * t +
-          this.w2 * 3 * this.p2.y * (1 - t) * t**2) /
-        (this.w0 * (1 - t)**3 +
-          this.w1 * 3 * (1 - t)**2 * t +
-          this.w2 * 3 * (1 - t) * t**2);
+     let px =
+  (this.w0 * this.p0.x * (1 - t)**5 +
+   this.w1 * 5 * this.p1.x * (1 - t)**4 * t +
+   this.w2 * 10 * this.p2.x * (1 - t)**3 * t**2 +
+   this.w3 * 10 * this.p3.x * (1 - t)**2 * t**3 +
+   this.w4 * 5 * this.p4.x * (1 - t) * t**4 +
+   this.w5 * this.p5.x * t**5) /
+  (this.w0 * (1 - t)**5 +
+   this.w1 * 5 * (1 - t)**4 * t +
+   this.w2 * 10 * (1 - t)**3 * t**2 +
+   this.w3 * 10 * (1 - t)**2 * t**3 +
+   this.w4 * 5 * (1 - t) * t**4 +
+   this.w5 * t**5);
+
+let py =
+  (this.w0 * this.p0.y * (1 - t)**5 +
+   this.w1 * 5 * this.p1.y * (1 - t)**4 * t +
+   this.w2 * 10 * this.p2.y * (1 - t)**3 * t**2 +
+   this.w3 * 10 * this.p3.y * (1 - t)**2 * t**3 +
+   this.w4 * 5 * this.p4.y * (1 - t) * t**4 +
+   this.w5 * this.p5.y * t**5) /
+  (this.w0 * (1 - t)**5 +
+   this.w1 * 5 * (1 - t)**4 * t +
+   this.w2 * 10 * (1 - t)**3 * t**2 +
+   this.w3 * 10 * (1 - t)**2 * t**3 +
+   this.w4 * 5 * (1 - t) * t**4 +
+   this.w5 * t**5);
 
       let p = new Point2(px, py);
       return p;

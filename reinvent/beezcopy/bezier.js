@@ -1,8 +1,8 @@
 import { Point2 } from "./point2.js";
 
 export class Bezier {
-  constructor(p0, p1, p2, color = [1, 1, 1, 1], pickRadiusWorld = 0.4) {
-    this.p = [p0, p1, p2];
+  constructor(p0, p1, p2,p3,p4,p5, color = [1, 1, 1, 1], pickRadiusWorld = 0.4) {
+    this.p = [p0, p1, p2,p3,p4,p5];
     this.color = color;
     this.pickRadius = pickRadiusWorld;
   }
@@ -15,18 +15,29 @@ export class Bezier {
   evaluate(t) {
     const p0 = this.p[0],
       p1 = this.p[1],
-      p2 = this.p[2]
+      p2 = this.p[2],
+      p3 = this.p[3],
+      p4 = this.p[4],
+      p5 = this.p[5]
     const u = 1 - t;
 
-    const x =
-      p0.x * u * u * u +
-      3 * p1.x * u * u * t +
-      3 * p2.x * u * t * t 
-    const y =
-      p0.y * u * u * u +
-      3 * p1.y * u * u * t +
-      3 * p2.y * u * t * t 
-    return new Point2(x, y);
+   const x =
+    p0.x * u**5 +
+    5 * p1.x * u**4 * t +
+    10 * p2.x * u**3 * t**2 +
+    10 * p3.x * u**2 * t**3 +
+    5 * p4.x * u * t**4 +
+    p5.x * t**5;
+
+  const y =
+    p0.y * u**5 +
+    5 * p1.y * u**4 * t +
+    10 * p2.y * u**3 * t**2 +
+    10 * p3.y * u**2 * t**3 +
+    5 * p4.y * u * t**4 +
+    p5.y * t**5;
+
+  return new Point2(x, y);
   }
 
   // returns index 0..3 or -1
@@ -92,6 +103,12 @@ export class Bezier {
       this.p[1].y,
       this.p[2].x,
       this.p[2].y,
+      this.p[3].x,
+      this.p[3].y,
+      this.p[4].x,
+      this.p[4].y,
+      this.p[5].x,
+      this.p[5].y
     ]);
 
     const buf = gl.createBuffer();
