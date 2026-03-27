@@ -4,6 +4,7 @@ import { Rat } from "./rat.js";
 import { drawRectangle } from "./shapes2d.js";
 import { initBuffers } from "./buffers.js";
 import { drawScene } from "./drawscene.js";
+import { Camera } from "./camera.js";
 
 main();
 async function main() {
@@ -47,8 +48,8 @@ async function main() {
   //
   // load a projection matrix onto the shader
   //
-  const h = 16;
-  const w = 15;
+  let h = 16;
+  let w = 15;
   const MARGIN = 0.5;
   let xlow = -MARGIN;
   let xhigh = w + MARGIN;
@@ -57,13 +58,14 @@ async function main() {
   
   const m = new Maze(w, h);
   const rat = new Rat(m.start + 0.5, 0.5, Math.PI / 2);
+  const camera = new Camera(w/2,-.5,Math.PI / 2)
 
   let currentView = "topView";
   let canvasAspect;
   let mazeAspect;
   let aspect;
 
-  gl.useProgram(programInfo.program);
+
   const projectionMatrix = mat4.create();
   window.addEventListener("resize", reportWindowSize);
   function reportWindowSize() {
@@ -73,23 +75,25 @@ async function main() {
     canvasAspect = gl.canvas.width / gl.canvas.height;
     mazeAspect = (w + MARGIN * 2) / (h + MARGIN * 2);
     aspect = canvasAspect / mazeAspect;
-
+    
     switch (currentView) {
       case "observerView":
-        UpdateObserverView(gl, programInfo, projectionMatrix, canvasAspect, w, h);
+        UpdateObserverView(gl, programInfo, projectionMatrix, canvasAspect, w, h,camera);
         break;
-
+        
       case "ratView":
+        console.log(currentView)
         UpdateRatView(gl, programInfo, projectionMatrix, canvasAspect, rat);
         break;
-
-      case "topView":
-        UpdateTopView(gl, programInfo, projectionMatrix, w, h, MARGIN, aspect, xlow, xhigh, ylow, yhigh);
-        break;
-    }
-  }
-  reportWindowSize();
-
+        
+        case "topView":
+          UpdateTopView(gl, programInfo, projectionMatrix, w, h, MARGIN, aspect, xlow, xhigh, ylow, yhigh);
+          break;
+        }
+      }
+      reportWindowSize();
+      
+    gl.useProgram(programInfo.program);
   //
   // Create content to display
   //
@@ -99,21 +103,13 @@ async function main() {
   let scurryBackward = false;
   let strafeLeft = false;
   let strafeRight = false;
+  let cameraForward = false;
+  let cameraBackward = false;
+  let cameraLeft = false;
+  let cameraRight = false;
 
 
 
-  window.addEventListener("keydown", keyDown);
-  function keyDown(event) {
-    if (event.code == 'KeyT') {
-      UpdateTopView(gl, programInfo, projectionMatrix, w, h, MARGIN, aspect, xlow, xhigh, ylow, yhigh);
-    }
-    if (event.code == 'KeyO'){
-      UpdateObserverView(gl, programInfo, projectionMatrix, canvasAspect, w, h);
-    }
-    if (event.code == 'KeyR'){
-      UpdateRatView(gl, programInfo, projectionMatrix, canvasAspect, rat);
-    }
-  }
 
   window.addEventListener("keydown", keyDown);
   function keyDown(event) {
@@ -135,6 +131,29 @@ async function main() {
     if (event.code == "KeyD") {
       strafeRight = true;
     }
+     if (event.code == 'KeyT') {
+      currentView = "topView"
+      UpdateTopView(gl, programInfo, projectionMatrix, w, h, MARGIN, aspect, xlow, xhigh, ylow, yhigh);
+    }
+    if (event.code == 'KeyO'){
+      currentView = "observerView"
+      UpdateObserverView(gl, programInfo, projectionMatrix, canvasAspect, w, h,camera);
+    }
+    if (event.code == 'KeyR'){
+      currentView = "ratView"
+      UpdateRatView(gl, programInfo, projectionMatrix, canvasAspect, rat);
+    }
+    if(event.code == "ArrowUp"){
+      cameraForward = true;
+    }
+    if(event.code == "ArrowDown"){
+      cameraBackward = true;
+    }
+    if(event.code == "ArrowRight"){
+      cameraRight = true;
+    }
+    if(event.code =="ArrowLeft")
+      cameraLeft = true;
   }
   window.addEventListener("keyup", keyUp);
   function keyUp(event) {
@@ -156,12 +175,36 @@ async function main() {
     if (event.code == "KeyD") {
       strafeRight = false;
     }
+    if (event.code == "ArrowUp"){
+      cameraForward = false;
+    }
+    if (event.code == "ArrowDown"){
+      cameraBackward = false;
+    }
+    if(event.code == "ArrowRight"){
+      cameraRight = false;
+    }
+    if(event.code == "ArrowLeft"){
+      cameraLeft = false;
+    }
+    if(event.code == "KeyH"){
+      m.height += 1
+    }
+    if(event.code == "KeyN"){
+      m.height -= 1
+    }
+    if(event.code == "KeyJ"){
+      m.width += 1
+    }
+    if(event.code == "KeyM"){
+      m.width -= 1
+    }
+
   }
 
   //
   // Main render loop
   //
-  gl.useProgram(programInfo.program);
   let previousTime = 0;
   function redraw(currentTime) {
     currentTime *= 0.001; // milliseconds to seconds
@@ -169,22 +212,30 @@ async function main() {
     if (DeltaT > 0.1) DeltaT = 0.1;
     previousTime = currentTime;
 
-    if (spinLeft) rat.spinLeft(DeltaT);
-    if (scurryForward) rat.scurryForward(DeltaT, m);
-    if (scurryBackward) rat.scurryBackward(DeltaT, m);
-    if (spinRight) rat.spinRight(DeltaT);
-    if (strafeLeft) rat.strafeLeft(DeltaT, m);
-    if (strafeRight) rat.strafeRight(DeltaT, m);
+  if (spinLeft) rat.spinLeft(DeltaT);
+  if (scurryForward) rat.scurryForward(DeltaT, m);
+  if (scurryBackward) rat.scurryBackward(DeltaT, m);
+  if (spinRight) rat.spinRight(DeltaT);
+  if (strafeLeft) rat.strafeLeft(DeltaT, m);
+  if (strafeRight) rat.strafeRight(DeltaT, m);
+  if (currentView == "observerView") {
+  if (cameraForward) camera.moveForward(DeltaT);
+  if (cameraBackward) camera.moveBackward(DeltaT);
+  if (cameraLeft) camera.spinLeft(DeltaT);   // arrow keys now spin
+  if (cameraRight) camera.spinRight(DeltaT);
+}
 
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // This will always fill the whole canvas with whatever was specified in gl.clearColor.
 
     // Reset the ModelViewMatrix to Identity (or something else) for each item you draw:
     if(currentView == "ratView"){
        UpdateRatView(gl, programInfo, projectionMatrix, canvasAspect, rat);
     }
-    const nearWhite = [0.9, 0.9, 0.9, 1];
-    drawRectangle(gl, shaderProgram, -100, -100, 100, 100, nearWhite);
+
+  if (currentView == "observerView") {
+  UpdateObserverView(gl, programInfo, projectionMatrix, canvasAspect, w, h, camera);
+}
+    
     // for demonstrative purposes.
     // 		This rectangle will fill only the smaller viewport when altering gl.viewport to fix aspect ratio.
     //		This rectangle will fill the whole canvas when altering ortho to fix aspect ratio.
@@ -209,6 +260,47 @@ function UpdateTopView(gl, programInfo, projectionMatrix, mazeWidth, mazeHeight,
     const nym = (fh - mazeHeight) / 2
     mat4.ortho(projectionMatrix, xlow, xhigh, -nym, mazeHeight + nym, -1, 1);
   }
+
+  gl.uniformMatrix4fv(
+    programInfo.uniformLocations.projectionMatrix,
+    false,
+    projectionMatrix
+  );
+}
+function UpdateObserverView(gl, programInfo, projectionMatrix, canvasAspect, mazeWidth, mazeHeight, camera) {
+  const fovy = Math.PI / 2;
+  const near = .2;
+  const far = 100;
+  mat4.perspective(projectionMatrix, fovy, canvasAspect, near, far);
+
+  const lookAtMatrix = mat4.create();
+  const eye = [camera.x, camera.y, 9];
+  const center = [
+    camera.x + Math.cos(camera.radians), 
+    camera.y + Math.sin(camera.radians), 
+    -2  // same z so we look horizontally
+  ];
+  const up = [0, 0, 1];
+  mat4.lookAt(lookAtMatrix, eye, center, up);
+
+  mat4.multiply(projectionMatrix, projectionMatrix, lookAtMatrix);
+
+  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+}
+
+function UpdateRatView(gl, programInfo, projectionMatrix, canvasAspect, rat) {
+  const fovy = Math.PI / 2;
+  const near = .1;
+  const far = 100;
+  mat4.perspective(projectionMatrix, fovy, canvasAspect, near, far);
+
+  const lookAtMatrix = mat4.create();
+  const eye = [rat.x, rat.y, .3];
+  const center = [rat.x + Math.cos(rat.radians), rat.y + Math.sin(rat.radians), .4]
+  const up = [0, 0, 1];
+  mat4.lookAt(lookAtMatrix, eye, center, up);
+
+  mat4.multiply(projectionMatrix, projectionMatrix, lookAtMatrix);
 
   gl.uniformMatrix4fv(
     programInfo.uniformLocations.projectionMatrix,

@@ -30,14 +30,13 @@ gl.uniformMatrix4fv(
   gl.drawArrays(gl.TRIANGLES, offset, vertexCount);
 }}
 
-function drawLine(gl, programInfo, x1, y1, z1, x2, y2, z2) {
+function drawLine(gl, programInfo, vertices) {
   const lineBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
-  const lineFloats = new Float32Array([x1, y1, z1, x2, y2, z2]);
+  const lineFloats = new Float32Array(vertices);
   gl.bufferData(gl.ARRAY_BUFFER, lineFloats, gl.DYNAMIC_DRAW);
 
   setPositionAttribute(gl, lineBuffer, programInfo);
-
   // Set the drawing position to the "identity" point, which is
   // the center of the scene.
   const modelViewMatrix = mat4.create();
@@ -52,8 +51,7 @@ function drawLine(gl, programInfo, x1, y1, z1, x2, y2, z2) {
   {
     // Draw Line code:
     const offset = 0;
-    const vertexCount = 2;
-    gl.drawArrays(gl.LINES, offset, vertexCount);
+    gl.drawArrays(gl.LINES, offset, vertices.length/3);
   }
 
 }
@@ -102,7 +100,7 @@ function drawScene(gl, programInfo, buffers, maze, rat, currentView) {
   // Clear the canvas before we start drawing on it.
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  setColor(gl, programInfo, [1,0,1]);
+  setColor(gl, programInfo, [.9,0,.5,1]);
   maze.draw(gl, programInfo, currentView);
   setColor(gl, programInfo, [.8, 0.3, 0.2,1.0]);
   drawRat(gl, programInfo, buffers, rat.x, rat.y, rat.radians)
@@ -113,8 +111,8 @@ function drawScene(gl, programInfo, buffers, maze, rat, currentView) {
 function setPositionAttribute(gl, buffer, programInfo) {
   const numComponents = 3; // pull out 2 values per iteration
   const type = gl.FLOAT; // the data in the buffer is 32bit floats
-  const normalize = false; // don't normalize
-  const stride = 0; // how many bytes to get from one set of values to the next
+  const normalize = gl.FALSE; // don't normalize
+  const stride = 3*Float32Array.BYTES_PER_ELEMENT // how many bytes to get from one set of values to the next
   // 0 = use type and numComponents above
   const offset = 0; // how many bytes inside the buffer to start from
   //gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
