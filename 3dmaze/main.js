@@ -35,14 +35,18 @@ async function main() {
   const programInfo = {
     program: shaderProgram,
     attribLocations: {
-        vertexPosition : gl.getAttribLocation(shaderProgram,"vertPosition")
+      vertexPosition: gl.getAttribLocation(shaderProgram, "vertPosition"),
+      vertexUV: gl.getAttribLocation(shaderProgram, "vertUV"),
+      vertexIndex: gl.getAttribLocation(shaderProgram, "vertIndex"),
     },
     uniformLocations: {
-      colorVector : gl.getUniformLocation(shaderProgram,"uColor"),
-      modelViewMatrix: gl.getUniformLocation(shaderProgram,"uModelViewMatrix"),
-      projectionMatrix: gl.getUniformLocation(shaderProgram,"uProjectionMatrix")
-    }
-  }
+      colorVector: gl.getUniformLocation(shaderProgram, "uColor"),
+      defaultColor: gl.getUniformLocation(shaderProgram, "uDefaultColor"),
+      modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
+      projectionMatrix: gl.getUniformLocation(shaderProgram, "uProjectionMatrix"),
+      texture0: gl.getUniformLocation(shaderProgram, "uTexture0"),
+    },
+  };
 
   const buffers = initBuffers(gl)
   //
@@ -94,6 +98,9 @@ async function main() {
       reportWindowSize();
       
     gl.useProgram(programInfo.program);
+    gl.uniform4fv(programInfo.uniformLocations.defaultColor, [1, 1, 1, 1]);
+    loadTexture(gl, programInfo.program, "wall-4-granite-TEX.jpg", 0);
+    gl.uniform1i(programInfo.uniformLocations.texture0, 0);
   //
   // Create content to display
   //
@@ -307,4 +314,55 @@ function UpdateRatView(gl, programInfo, projectionMatrix, canvasAspect, rat) {
     false,
     projectionMatrix
   );
+}
+function loadTexture(gl, shaderProgram, fileName, textureImageUnit, tempColor = [180, 180, 180, 255]) {
+  gl.activeTexture(gl.TEXTURE0 + textureImageUnit);
+
+  const textureObject = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, textureObject);
+
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.RGBA,
+    1,
+    1,
+    0,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    new Uint8Array(tempColor)
+  );
+
+  const image = new Image();
+  image.src = fileName;
+
+  image.onload = function () {
+    gl.activeTexture(gl.TEXTURE0 + textureImageUnit);
+    gl.bindTexture(gl.TEXTURE_2D, textureObject);
+
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      image
+    );
+
+    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    } else {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    }
+  };
+
+  return textureObject;
+}
+
+function isPowerOf2(value) {
+  return (value & (value - 1)) === 0;
 }

@@ -1,5 +1,4 @@
-import { drawLine,drawQuad, setColor } from "./drawscene.js";
-
+import { drawLine, drawQuad, drawTexturedQuad, setColor } from "./drawscene.js";
 class Cell {
   constructor() {
     this.l = true;
@@ -26,21 +25,52 @@ class Cell {
         const vertices = [x, y + 1,0, x + 1, y + 1,0];
         drawLine(gl, programInfo, vertices);
       }
-  }else{
-    const r = Math.sin(x*3712+y*34857+1)*.5+.5;            
-    const g = Math.sin(x*9321+y*27543+2)*.5+.5;
-    const b = Math.sin(x*1268+y*12771+7)*.5+.5;
-    const color = [r,g,b,1];
-    setColor(gl, programInfo, color);
-    if(this.l)
-      drawQuad(gl, programInfo, x,y,0, x,y+1,0, x,y+1,1, x,y,1);
-    if(this.r)
-      drawQuad(gl, programInfo, x+1,y,0, x+1,y+1,0, x+1,y+1,1, x+1,y,1);
-      setColor(gl, programInfo, [g,b,r,1]);
-    if(this.b)
-      drawQuad(gl, programInfo, x,y,0, x+1,y,0, x+1,y,1, x,y,1);
-    if(this.t)
-      drawQuad(gl, programInfo, x,y+1,0, x+1,y+1,0, x+1,y+1,1, x,y+1,1);
+    } else {
+    const tex = 0;
+    const u1 = 0, v1 = 1;
+    const u2 = 1, v2 = 1;
+    const u3 = 1, v3 = 0;
+    const u4 = 0, v4 = 0;
+
+    if (this.l) {
+      drawTexturedQuad(
+        gl, programInfo,
+        x,   y,   0, u1, v1, tex,
+        x,   y+1, 0, u2, v2, tex,
+        x,   y+1, 1, u3, v3, tex,
+        x,   y,   1, u4, v4, tex
+      );
+    }
+
+    if (this.r) {
+      drawTexturedQuad(
+        gl, programInfo,
+        x+1, y,   0, u1, v1, tex,
+        x+1, y+1, 0, u2, v2, tex,
+        x+1, y+1, 1, u3, v3, tex,
+        x+1, y,   1, u4, v4, tex
+      );
+    }
+
+    if (this.b) {
+      drawTexturedQuad(
+        gl, programInfo,
+        x,   y, 0, u1, v1, tex,
+        x+1, y, 0, u2, v2, tex,
+        x+1, y, 1, u3, v3, tex,
+        x,   y, 1, u4, v4, tex
+      );
+    }
+
+    if (this.t) {
+      drawTexturedQuad(
+        gl, programInfo,
+        x,   y+1, 0, u1, v1, tex,
+        x+1, y+1, 0, u2, v2, tex,
+        x+1, y+1, 1, u3, v3, tex,
+        x,   y+1, 1, u4, v4, tex
+      );
+    }
   }
 }
 }
