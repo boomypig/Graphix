@@ -3,7 +3,9 @@ function drawRat(gl, programInfo, buffers, x, z, y, radians) {
 
   const modelViewMatrix = mat4.create();
   mat4.translate(modelViewMatrix, modelViewMatrix, [x, z + 0.15, y]);
-  mat4.rotate(modelViewMatrix, modelViewMatrix, radians + Math.PI / 2, [0, 1, 0]);
+  // gl-matrix Y-rotation maps +X to (cos θ, 0, -sin θ), but movement direction
+  // is (cos θ, 0, +sin θ), so negate the angle to get the correct alignment.
+  mat4.rotate(modelViewMatrix, modelViewMatrix, -radians, [0, 1, 0]);
 
   gl.uniformMatrix4fv(
     programInfo.uniformLocations.modelViewMatrix,
@@ -18,7 +20,7 @@ function setColor(gl, programInfo, color) {
   gl.uniform4fv(programInfo.uniformLocations.colorVector, color);
 }
 
-function drawScene(gl, programInfo, buffers, terrain, rat) {
+function drawScene(gl, programInfo, buffers, terrain, rat, skipRat = false) {
   gl.clearColor(0.65, 0.8, 0.95, 1.0);
   gl.clearDepth(1.0);
   gl.enable(gl.DEPTH_TEST);
@@ -27,8 +29,10 @@ function drawScene(gl, programInfo, buffers, terrain, rat) {
 
   terrain.draw(gl, programInfo);
 
-  setColor(gl, programInfo, [0.85, 0.2, 0.15, 1.0]);
-  drawRat(gl, programInfo, buffers, rat.x, rat.z, rat.y, rat.radians);
+  if (!skipRat) {
+    setColor(gl, programInfo, [0.85, 0.2, 0.15, 1.0]);
+    drawRat(gl, programInfo, buffers, rat.x, rat.z, rat.y, rat.radians);
+  }
 }
 
 function setPositionOnlyAttribute(gl, buffer, programInfo) {

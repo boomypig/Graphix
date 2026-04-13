@@ -1,6 +1,6 @@
 class Rat {
   static SPIN_SPEED = 2;
-  static MOVE_SPEED = 1;
+  static MOVE_SPEED = 4;
   static RAT_RADIUS = 0.3;
 
   constructor(x, y, radians, terrain = null) {

@@ -1,5 +1,5 @@
 class Terrain {
-  constructor(size = 50, divisions = 120, waterHeight = -2.5) {
+  constructor(size = 100, divisions = 200, waterHeight = -5) {
     this.size = size;
     this.divisions = divisions;
     this.waterHeight = waterHeight;
@@ -9,18 +9,37 @@ class Terrain {
     this.landVertexCount = 0;
     this.waterVertexCount = 0;
 
-    this.textureScale = 8.0;
+    this.textureScale = 12.0;
+
+    // Generate random terrain parameters once at construction so
+    // every page load produces a different landscape.
+    this._waves = this._generateWaves();
+  }
+
+  _generateWaves() {
+    // A handful of overlapping sine/cosine waves with randomised
+    // frequencies, amplitudes and phase offsets.
+    const r = () => Math.random();
+    return [
+      // large slow rolling hills
+      { amp: 2.0 + r() * 2.5,  fx: 0.08 + r() * 0.07,  fy: 0.05 + r() * 0.06,  phase: r() * Math.PI * 2 },
+      { amp: 1.5 + r() * 2.0,  fx: 0.06 + r() * 0.05,  fy: 0.09 + r() * 0.07,  phase: r() * Math.PI * 2 },
+      // medium ridges
+      { amp: 2.5 + r() * 3.0,  fx: 0.15 + r() * 0.10,  fy: 0.20 + r() * 0.10,  phase: r() * Math.PI * 2 },
+      { amp: 2.0 + r() * 2.5,  fx: 0.22 + r() * 0.08,  fy: 0.12 + r() * 0.08,  phase: r() * Math.PI * 2 },
+      // sharper detail
+      { amp: 1.0 + r() * 1.5,  fx: 0.35 + r() * 0.15,  fy: 0.30 + r() * 0.15,  phase: r() * Math.PI * 2 },
+      { amp: 0.8 + r() * 1.0,  fx: 0.40 + r() * 0.20,  fy: 0.45 + r() * 0.20,  phase: r() * Math.PI * 2 },
+    ];
   }
 
   getHeight(x, y) {
-  let z = 0;
-  const zscale = 0.75;
-  z += 2 * Math.sin(0.4 * y);
-  z += 1.5 * Math.cos(0.3 * x);
-  z += 4 * Math.sin(0.2 * x) * Math.cos(0.3 * y);
-  z += 6 * Math.sin(0.11 * x) * Math.cos(0.03 * y);
-  return z * zscale;
-}
+    let z = 0;
+    for (const w of this._waves) {
+      z += w.amp * Math.sin(w.fx * x + w.fy * y + w.phase);
+    }
+    return z * 0.80;
+  }
 
 getSurfaceHeight(x, y) {
   return Math.max(this.getHeight(x, y), this.waterHeight);

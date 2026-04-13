@@ -26,50 +26,58 @@ class Cell {
         drawLine(gl, programInfo, vertices);
       }
     } else {
-    const tex = 0;
-    const u1 = 0, v1 = 1;
-    const u2 = 1, v2 = 1;
-    const u3 = 1, v3 = 0;
-    const u4 = 0, v4 = 0;
+    const graniteTex = 0.0;
+    const brickTex = 1.0;
+
+    const fitU1 = 0, fitV1 = 1;
+    const fitU2 = 1, fitV2 = 1;
+    const fitU3 = 1, fitV3 = 0;
+    const fitU4 = 0, fitV4 = 0;
+
+    const repeatCount = 3;
+    const repU1 = 0, repV1 = repeatCount;
+    const repU2 = repeatCount, repV2 = repeatCount;
+    const repU3 = repeatCount, repV3 = 0;
+    const repU4 = 0, repV4 = 0;
 
     if (this.l) {
       drawTexturedQuad(
-        gl, programInfo,
-        x,   y,   0, u1, v1, tex,
-        x,   y+1, 0, u2, v2, tex,
-        x,   y+1, 1, u3, v3, tex,
-        x,   y,   1, u4, v4, tex
-      );
+  gl, programInfo,
+  x,   y,   0, repU1, repV1, graniteTex,
+  x,   y+1, 0, repU2, repV2, graniteTex,
+  x,   y+1, 1, repU3, repV3, graniteTex,
+  x,   y,   1, repU4, repV4, graniteTex
+);
     }
 
     if (this.r) {
       drawTexturedQuad(
-        gl, programInfo,
-        x+1, y,   0, u1, v1, tex,
-        x+1, y+1, 0, u2, v2, tex,
-        x+1, y+1, 1, u3, v3, tex,
-        x+1, y,   1, u4, v4, tex
-      );
+  gl, programInfo,
+  x+1, y,   0, repU1, repV1, graniteTex,
+  x+1, y+1, 0, repU2, repV2, graniteTex,
+  x+1, y+1, 1, repU3, repV3, graniteTex,
+  x+1, y,   1, repU4, repV4, graniteTex
+);
     }
 
     if (this.b) {
       drawTexturedQuad(
-        gl, programInfo,
-        x,   y, 0, u1, v1, tex,
-        x+1, y, 0, u2, v2, tex,
-        x+1, y, 1, u3, v3, tex,
-        x,   y, 1, u4, v4, tex
-      );
+  gl, programInfo,
+  x,   y, 0, fitU1, fitV1, brickTex,
+  x+1, y, 0, fitU2, fitV2, brickTex,
+  x+1, y, 1, fitU3, fitV3, brickTex,
+  x,   y, 1, fitU4, fitV4, brickTex
+);
     }
 
     if (this.t) {
       drawTexturedQuad(
-        gl, programInfo,
-        x,   y+1, 0, u1, v1, tex,
-        x+1, y+1, 0, u2, v2, tex,
-        x+1, y+1, 1, u3, v3, tex,
-        x,   y+1, 1, u4, v4, tex
-      );
+  gl, programInfo,
+  x,   y+1, 0, fitU1, fitV1, brickTex,
+  x+1, y+1, 0, fitU2, fitV2, brickTex,
+  x+1, y+1, 1, fitU3, fitV3, brickTex,
+  x,   y+1, 1, fitU4, fitV4, brickTex
+);
     }
   }
 }

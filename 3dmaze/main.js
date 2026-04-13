@@ -45,6 +45,7 @@ async function main() {
       modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
       projectionMatrix: gl.getUniformLocation(shaderProgram, "uProjectionMatrix"),
       texture0: gl.getUniformLocation(shaderProgram, "uTexture0"),
+      texture01: gl.getUniformLocation(shaderProgram,"uTexture1")
     },
   };
 
@@ -99,8 +100,11 @@ async function main() {
       
     gl.useProgram(programInfo.program);
     gl.uniform4fv(programInfo.uniformLocations.defaultColor, [1, 1, 1, 1]);
-    loadTexture(gl, programInfo.program, "wall-4-granite-TEX.jpg", 0);
+    loadTexture(gl, "wall-4-granite-TEX.jpg", 0, true);
+    loadTexture(gl, "wall-9-brick-TEX.jpg", 1, false);
     gl.uniform1i(programInfo.uniformLocations.texture0, 0);
+    gl.uniform1i(programInfo.uniformLocations.texture01, 1);
+    
   //
   // Create content to display
   //
@@ -315,11 +319,10 @@ function UpdateRatView(gl, programInfo, projectionMatrix, canvasAspect, rat) {
     projectionMatrix
   );
 }
-function loadTexture(gl, shaderProgram, fileName, textureImageUnit, tempColor = [180, 180, 180, 255]) {
-  gl.activeTexture(gl.TEXTURE0 + textureImageUnit);
-
-  const textureObject = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, textureObject);
+function loadTexture(gl, url, unit, repeat = false) {
+  const texture = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
 
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -330,15 +333,14 @@ function loadTexture(gl, shaderProgram, fileName, textureImageUnit, tempColor = 
     0,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
-    new Uint8Array(tempColor)
+    new Uint8Array([255, 255, 255, 255])
   );
 
   const image = new Image();
-  image.src = fileName;
-
   image.onload = function () {
-    gl.activeTexture(gl.TEXTURE0 + textureImageUnit);
-    gl.bindTexture(gl.TEXTURE_2D, textureObject);
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
     gl.texImage2D(
       gl.TEXTURE_2D,
@@ -349,18 +351,20 @@ function loadTexture(gl, shaderProgram, fileName, textureImageUnit, tempColor = 
       image
     );
 
-    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
-      gl.generateMipmap(gl.TEXTURE_2D);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-    } else {
+    if (repeat) {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    } else {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   };
 
-  return textureObject;
+  image.src = url;
+  return texture;
 }
 
 function isPowerOf2(value) {

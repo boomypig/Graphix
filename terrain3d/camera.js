@@ -1,52 +1,53 @@
 class Camera {
-  static MOVE_SPEED = 1.2;
-  static SPIN_SPEED = 2;
-  static CAMERA_RADIUS = 0.3;
-  static HEIGHT_OFFSET = 0.8;
+  static MOVE_SPEED    = 12;
+  static VERTICAL_SPEED = 8;
+  static SPIN_SPEED    = 1.8;
+  static PITCH_SPEED   = 1.5;
 
-  constructor(x, y, radians, terrain = null) {
-    this.x = x;
-    this.y = y;
+  /**
+   * @param {number} x        - game-space X
+   * @param {number} y        - game-space Y (horizontal, maps to world Z)
+   * @param {number} z        - height (maps to world Y)
+   * @param {number} radians  - yaw angle
+   * @param {number} pitch    - vertical look angle (negative = looking down)
+   */
+  constructor(x, y, z, radians, pitch = -0.25) {
+    this.x       = x;
+    this.y       = y;
+    this.z       = z;
     this.radians = radians;
-    this.z = terrain
-  ? terrain.getSurfaceHeight(x, y) + Camera.HEIGHT_OFFSET
-  : Camera.HEIGHT_OFFSET;
+    this.pitch   = pitch;
   }
 
-  moveForward(DeltaT, terrain) {
-    const newx = this.x + Math.cos(this.radians) * DeltaT * Camera.MOVE_SPEED;
-    const newy = this.y + Math.sin(this.radians) * DeltaT * Camera.MOVE_SPEED;
-
-    this.x = newx;
-    this.y = newy;
-    this.z = terrain.getSurfaceHeight(this.x, this.y) + Camera.HEIGHT_OFFSET;
+  // Fly forward along the camera's look direction (affected by pitch)
+  moveForward(DeltaT) {
+    const horiz = Math.cos(this.pitch);
+    this.x += Math.cos(this.radians) * horiz * DeltaT * Camera.MOVE_SPEED;
+    this.y += Math.sin(this.radians) * horiz * DeltaT * Camera.MOVE_SPEED;
+    this.z += Math.sin(this.pitch)           * DeltaT * Camera.MOVE_SPEED;
   }
 
-  moveBackward(DeltaT, terrain) {
-    this.moveForward(-DeltaT, terrain);
+  moveBackward(DeltaT) { this.moveForward(-DeltaT); }
+
+  strafeLeft(DeltaT) {
+    this.x += Math.cos(this.radians + Math.PI / 2) * DeltaT * Camera.MOVE_SPEED;
+    this.y += Math.sin(this.radians + Math.PI / 2) * DeltaT * Camera.MOVE_SPEED;
   }
 
-  moveLeft(DeltaT, terrain) {
-    const newx =
-      this.x + Math.cos(this.radians + Math.PI / 2) * DeltaT * Camera.MOVE_SPEED;
-    const newy =
-      this.y + Math.sin(this.radians + Math.PI / 2) * DeltaT * Camera.MOVE_SPEED;
+  strafeRight(DeltaT) { this.strafeLeft(-DeltaT); }
 
-    this.x = newx;
-    this.y = newy;
-    this.z = terrain.getSurfaceHeight(this.x, this.y) + Camera.HEIGHT_OFFSET;
+  moveUp(DeltaT)   { this.z += DeltaT * Camera.VERTICAL_SPEED; }
+  moveDown(DeltaT) { this.z -= DeltaT * Camera.VERTICAL_SPEED; }
+
+  spinLeft(DeltaT)  { this.radians -= Camera.SPIN_SPEED * DeltaT; }
+  spinRight(DeltaT) { this.radians += Camera.SPIN_SPEED * DeltaT; }
+
+  pitchUp(DeltaT) {
+    this.pitch = Math.min(Math.PI / 2 - 0.05, this.pitch + Camera.PITCH_SPEED * DeltaT);
   }
 
-  moveRight(DeltaT, terrain) {
-    this.moveLeft(-DeltaT, terrain);
-  }
-
-  spinLeft(DeltaT) {
-    this.radians -= Camera.SPIN_SPEED * DeltaT;
-  }
-
-  spinRight(DeltaT) {
-    this.radians += Camera.SPIN_SPEED * DeltaT;
+  pitchDown(DeltaT) {
+    this.pitch = Math.max(-Math.PI / 2 + 0.05, this.pitch - Camera.PITCH_SPEED * DeltaT);
   }
 }
 

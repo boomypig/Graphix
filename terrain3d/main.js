@@ -52,9 +52,9 @@ async function main() {
   // load a projection matrix onto the shader
   //
   
-  const terrain = new Terrain(50, 120, -2.5);
+  const terrain = new Terrain(100, 200, -5);
   const rat = new Rat(0, 0, 0, terrain);
-  const camera = new Camera(0, 0, Math.PI / 4, terrain);
+  const camera = new Camera(0, -15, 28, Math.PI / 4, -0.3);
 
   let currentView = "observerView";
   let canvasAspect;
@@ -97,6 +97,10 @@ async function main() {
   let cameraBackward = false;
   let cameraLeft = false;
   let cameraRight = false;
+  let cameraUp = false;
+  let cameraDown = false;
+  let cameraPitchUp = false;
+  let cameraPitchDown = false;
 
 
 
@@ -123,7 +127,7 @@ async function main() {
     }
     if (event.code == 'KeyO'){
       currentView = "observerView"
-      UpdateObserverView(gl, programInfo, projectionMatrix, canvasAspect, w, h,camera);
+      UpdateObserverView(gl, programInfo, projectionMatrix, canvasAspect, terrain, camera);
     }
     if (event.code == 'KeyR'){
       currentView = "ratView"
@@ -140,6 +144,19 @@ async function main() {
     }
     if(event.code =="ArrowLeft")
       cameraLeft = true;
+    if(event.code == "PageUp"){
+      cameraUp = true;
+    }
+    if(event.code == "PageDown"){
+      cameraDown = true;
+    }
+    // Shift+Arrow look up/down
+    if(event.code == "ArrowUp" && event.shiftKey){
+      cameraPitchUp = true; cameraForward = false;
+    }
+    if(event.code == "ArrowDown" && event.shiftKey){
+      cameraPitchDown = true; cameraBackward = false;
+    }
   }
   window.addEventListener("keyup", keyUp);
   function keyUp(event) {
@@ -163,15 +180,23 @@ async function main() {
     }
     if (event.code == "ArrowUp"){
       cameraForward = false;
+      cameraPitchUp = false;
     }
     if (event.code == "ArrowDown"){
       cameraBackward = false;
+      cameraPitchDown = false;
     }
     if(event.code == "ArrowRight"){
       cameraRight = false;
     }
     if(event.code == "ArrowLeft"){
       cameraLeft = false;
+    }
+    if(event.code == "PageUp"){
+      cameraUp = false;
+    }
+    if(event.code == "PageDown"){
+      cameraDown = false;
     }
 
   }
@@ -194,10 +219,14 @@ if (strafeLeft) rat.strafeLeft(DeltaT, terrain);
 if (strafeRight) rat.strafeRight(DeltaT, terrain);
 
 if (currentView == "observerView") {
-  if (cameraForward) camera.moveForward(DeltaT, terrain);
-  if (cameraBackward) camera.moveBackward(DeltaT, terrain);
-  if (cameraLeft) camera.spinLeft(DeltaT);
-  if (cameraRight) camera.spinRight(DeltaT);
+  if (cameraForward)    camera.moveForward(DeltaT);
+  if (cameraBackward)   camera.moveBackward(DeltaT);
+  if (cameraLeft)       camera.spinLeft(DeltaT);
+  if (cameraRight)      camera.spinRight(DeltaT);
+  if (cameraUp)         camera.moveUp(DeltaT);
+  if (cameraDown)       camera.moveDown(DeltaT);
+  if (cameraPitchUp)    camera.pitchUp(DeltaT);
+  if (cameraPitchDown)  camera.pitchDown(DeltaT);
 }
 
     // This will always fill the whole canvas with whatever was specified in gl.clearColor.
@@ -215,7 +244,7 @@ if (currentView == "observerView") {
     // 		This rectangle will fill only the smaller viewport when altering gl.viewport to fix aspect ratio.
     //		This rectangle will fill the whole canvas when altering ortho to fix aspect ratio.
 
-    drawScene(gl, programInfo, buffers, terrain, rat);
+    drawScene(gl, programInfo, buffers, terrain, rat, currentView === "ratView");
     requestAnimationFrame(redraw);
   }
   requestAnimationFrame(redraw);
@@ -223,30 +252,18 @@ if (currentView == "observerView") {
 
 
 function UpdateObserverView(gl, programInfo, projectionMatrix, canvasAspect, terrain, camera) {
-  const fovy = Math.PI / 3;
-  const near = 0.1;
-  const far = 300;
-  mat4.perspective(projectionMatrix, fovy, canvasAspect, near, far);
+  mat4.perspective(projectionMatrix, Math.PI / 3, canvasAspect, 0.1, 500);
 
   const lookAtMatrix = mat4.create();
 
-  const followDistance = terrain.size * 0.45;
-  const followHeight = terrain.size * 0.30;
+  // eye is the camera's world position (game: x,y horizontal; z height → world: x, z, y)
+  const eye = [camera.x, camera.z, camera.y];
 
-  const centerX = camera.x;
-  const centerY = camera.y;
-  const centerZ = terrain.getSurfaceHeight(centerX, centerY);
-
-  const eye = [
-    centerX - Math.cos(camera.radians) * followDistance,
-    centerZ + followHeight,
-    centerY - Math.sin(camera.radians) * followDistance
-  ];
-
+  // look direction from yaw (radians) and pitch
   const center = [
-    centerX,
-    centerZ,
-    centerY
+    camera.x + Math.cos(camera.radians) * Math.cos(camera.pitch),
+    camera.z + Math.sin(camera.pitch),
+    camera.y + Math.sin(camera.radians) * Math.cos(camera.pitch),
   ];
 
   const up = [0, 1, 0];
