@@ -5,7 +5,7 @@ varying vec3 fragNormal;
 
 uniform sampler2D uTexture;
 uniform vec3 uEyePosition;
-uniform vec3 uLightDirection;
+uniform vec3 uLightPosition;
 
 void main() {
     vec4 materialColor = texture2D(uTexture, fragUV);
@@ -17,8 +17,7 @@ void main() {
 
     // Add diffuse:
     vec3 normalizedNormalVector = normalize(fragNormal);
-    vec3 lightDirection = normalize(uLightDirection);
-    vec3 toLight = lightDirection*-1.0;
+    vec3 toLight = normalize(uLightPosition - fragPosition.xyz);
     float d = dot(normalizedNormalVector, toLight) * (1.0 - ambient);
     if(d>0.0){
       finalColor += materialColor * d;
@@ -26,8 +25,8 @@ void main() {
         // Add specular:
       vec3 toEye = uEyePosition - fragPosition.xyz;
       toEye = normalize(toEye);
-      
-      vec3 lightDirectionReflected = reflect(lightDirection, normalizedNormalVector);
+
+      vec3 lightDirectionReflected = reflect(-toLight, normalizedNormalVector);
       float d2 =dot(toEye, lightDirectionReflected);
       if(d2>0.0){
         float shininess = 80.0;
@@ -36,7 +35,7 @@ void main() {
         finalColor += specularColor*d2;
       }
     }
-    
+
     if(finalColor[0] > 1.0)
         finalColor[0] = 1.0;
     if(finalColor[1] > 1.0)

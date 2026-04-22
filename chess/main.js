@@ -49,16 +49,16 @@ async function main() {
 	//
 	// Other shader variables:
 	// 
-	function setLightDirection(x, y, z) {
+	function setLightPosition(x, y, z) {
 		gl.uniform3fv(
-			gl.getUniformLocation(shaderProgram, "uLightDirection"),
+			gl.getUniformLocation(shaderProgram, "uLightPosition"),
 			[x, y, z]
 		);
 	}
-	setLightDirection(1, -1, -1);
+	setLightPosition(3, 10, 8);
 
-	const eye = [0, 6, 9];
-	const at = [0, 1.5, 2.3]
+	const eye = [0, 8, 11];
+	const at = [0, 0, 0]
 	const up = [0, 1, 0];
 	setObservationView(gl, shaderProgram, eye, at, up, canvas.clientWidth / canvas.clientHeight)
 
