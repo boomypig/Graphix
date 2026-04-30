@@ -16,13 +16,15 @@ class ChessSet {
 
         // Scandinavian Defense: 1.e4 d5 2.exd5 Nf6 3.Nc3 Bg4
         // pi=piece index, captureIndex=piece removed on arrival, t=start time, dur=duration
+        // flip:true = piece does a 360° front flip during movement
         this.moves = [
-            { pi: 12, toCol: 5, toRow: 4,                    t:  2.0, dur: 1.5 },  // 1. e4
-            { pi: 27, toCol: 4, toRow: 5,                    t:  5.0, dur: 1.5 },  // 1... d5
-            { pi: 12, toCol: 4, toRow: 5, captureIndex: 27,  t:  8.0, dur: 1.5 },  // 2. exd5
-            { pi: 22, toCol: 6, toRow: 6,                    t: 11.0, dur: 1.5 },  // 2... Nf6
-            { pi:  1, toCol: 3, toRow: 3,                    t: 14.0, dur: 1.5 },  // 3. Nc3
-            { pi: 18, toCol: 7, toRow: 4,                    t: 17.0, dur: 1.5 },  // 3... Bg4
+            { pi: 12, toCol: 5, toRow: 4,                    t:  2.0, dur: 1.5, flip: true },  // 1. e4
+            { pi: 27, toCol: 4, toRow: 5,                    t:  5.0, dur: 1.5 },               // 1... d5
+            { pi: 12, toCol: 4, toRow: 5, captureIndex: 27,  t:  8.0, dur: 1.5 },               // 2. exd5 (explode!)
+            { pi: 22, toCol: 6, toRow: 6,                    t: 11.0, dur: 1.5, flip: true },   // 2... Nf6
+            { pi:  1, toCol: 3, toRow: 3,                    t: 14.0, dur: 1.5 },               // 3. Nc3
+            { pi: 18, toCol: 7, toRow: 4,                    t: 17.0, dur: 1.5 },
+            { pi:  8, toCol: 1, toRow: 3,                    t: 20.0, dur: 1.5 },              
         ];
         this.loopDuration = 24.0;
     }
@@ -67,12 +69,25 @@ class ChessSet {
         this.drawItem(gl, shaderProgram, itemName, atx-4.5, aty, -atz+4.5, sx, sy, sz, radians, rx, ry, rz) ;
     }
 
+    // draw a piece using a pre-built model matrix (needed for multi-rotation effects)
+    drawWithMat(gl, shaderProgram, itemName, m) {
+        gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "uModelViewMatrix"), false, m);
+        const nm = mat3.create();
+        mat3.normalFromMat4(nm, m);
+        gl.uniformMatrix3fv(gl.getUniformLocation(shaderProgram, "uNormalMatrix"), false, nm);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[itemName]);
+        setShaderAttributes(gl, shaderProgram);
+        gl.drawArrays(gl.TRIANGLES, 0, this.buffers[itemName].vertexCount);
+    }
+
     draw(gl, shaderProgram, currentTime) {
         const t = currentTime % this.loopDuration;
 
         // compute current piece positions and captured set
         const positions = this.pieces.map(p => ({ col: p.col, row: p.row, arc: 0 }));
         const captured = new Set();
+        let activeMove = null;
+        let activeProgress = 0;
 
         for (const move of this.moves) {
             if (t < move.t) break;
@@ -81,6 +96,8 @@ class ChessSet {
                 if (move.captureIndex !== undefined) captured.add(move.captureIndex);
                 positions[move.pi] = { col: move.toCol, row: move.toRow, arc: 0 };
             } else {
+                activeMove = move;
+                activeProgress = progress;
                 const from = positions[move.pi];
                 positions[move.pi] = {
                     col: from.col + (move.toCol - from.col) * progress,
@@ -94,12 +111,31 @@ class ChessSet {
         gl.bindTexture(gl.TEXTURE_2D, this.boardTexture);
         this.drawItem(gl, shaderProgram, "cube");
 
+        // white queen (index 3): goes on its side, spins, returns upright -- cycles every 8s
+        const qT = t % 8.0;
+        let qTiltDeg = 0, qSpinDeg = 0;
+        if (qT < 1.0)      { qTiltDeg = qT * 90; }
+        else if (qT < 2.0) { qTiltDeg = 90; qSpinDeg = (qT - 1.0) * 360; }
+        else if (qT < 3.0) { qTiltDeg = (3.0 - qT) * 90; }
+
         // Set the white pieces texture and draw white pieces:
         gl.bindTexture(gl.TEXTURE_2D, this.whiteTexture);
         for (let i = 0; i < this.pieces.length; i++) {
             if (captured.has(i) || this.pieces[i].color !== 'white') continue;
             const pos = positions[i];
-            this.drawAt(gl, shaderProgram, this.pieces[i].type, pos.col, pos.arc, pos.row);
+            const isMoving = activeMove !== null && activeMove.pi === i;
+            const flipDeg = (isMoving && activeMove.flip) ? activeProgress * 360 : 0;
+
+            // if (i === 3) {
+            //     // queen: tilt on Z axis, spin on Y axis, return
+            //     const m = mat4.create();
+            //     mat4.translate(m, m, [pos.col - 4.5, pos.arc, -pos.row + 4.5]);
+            //     mat4.rotate(m, m, qTiltDeg * Math.PI / 180, [0, 0, 1]);
+            //     mat4.rotate(m, m, qSpinDeg * Math.PI / 180, [0, 1, 0]);
+            //     this.drawWithMat(gl, shaderProgram, 'queen', m);
+            // } else {
+                this.drawAt(gl, shaderProgram, this.pieces[i].type, pos.col, pos.arc, pos.row, 1, 1, 1, flipDeg, 1, 0, 0);
+            // }
         }
 
         // Set the black pieces texture and draw black pieces:
@@ -107,7 +143,33 @@ class ChessSet {
         for (let i = 0; i < this.pieces.length; i++) {
             if (captured.has(i) || this.pieces[i].color !== 'black') continue;
             const pos = positions[i];
-            this.drawAt(gl, shaderProgram, this.pieces[i].type, pos.col, pos.arc, pos.row, 1, 1, 1, 180, 0, 1, 0);
+            const isMoving = activeMove !== null && activeMove.pi === i;
+            const isExploding = activeMove !== null && activeMove.captureIndex === i;
+            const flipDeg = (isMoving && activeMove.flip) ? activeProgress * 360 : 0;
+
+            if (isExploding) {
+                // captured pawn explodes into 8 spinning fragments flying outward
+                for (let f = 0; f < 8; f++) {
+                    const angle = (f / 8) * Math.PI * 2;
+                    const spread = activeProgress * 2.5;
+                    const fragScale = (1.0 - activeProgress) * 0.5;
+                    this.drawAt(gl, shaderProgram, 'pawn',
+                        pos.col + Math.sin(angle) * spread,
+                        Math.sin(activeProgress * Math.PI) * 2.0,
+                        pos.row + Math.cos(angle) * spread,
+                        fragScale, fragScale, fragScale,
+                        activeProgress * 540, 1, 1, 0);
+                }
+            } else if (isMoving && activeMove.flip) {
+                // black piece doing front flip: Y-180 to face white + X rotation for flip
+                const m = mat4.create();
+                mat4.translate(m, m, [pos.col - 4.5, pos.arc, -pos.row + 4.5]);
+                mat4.rotate(m, m, Math.PI, [0, 1, 0]);
+                mat4.rotate(m, m, flipDeg * Math.PI / 180, [1, 0, 0]);
+                this.drawWithMat(gl, shaderProgram, this.pieces[i].type, m);
+            } else {
+                this.drawAt(gl, shaderProgram, this.pieces[i].type, pos.col, pos.arc, pos.row, 1, 1, 1, 180, 0, 1, 0);
+            }
         }
     }
 }
