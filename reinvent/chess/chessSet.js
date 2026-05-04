@@ -18,7 +18,7 @@ class ChessSet {
         // pi=piece index, captureIndex=piece removed on arrival, t=start time, dur=duration
         // flip:true = piece does a 360° front flip during movement
         this.moves = [
-            { pi: 11, toCol: 4, toRow: 4, t: 5.0, dur: 2.0, yRotateDeg: 90 },
+            { pi: 11, toCol: 4, toRow: 4, t: 5.0, dur: 2.0, xTiltDeg: -90 },
         ];
         this.loopDuration = 10.0;
     }
@@ -78,7 +78,7 @@ class ChessSet {
         const t = currentTime % this.loopDuration;
 
         // compute current piece positions and captured set
-        const positions = this.pieces.map(p => ({ col: p.col, row: p.row, arc: 0 }));
+        const positions = this.pieces.map(p => ({ col: p.col, row: p.row, arc: 0, yRot: 0, xTilt: 0 }));
         const captured = new Set();
         let activeMove = null;
         let activeProgress = 0;
@@ -88,7 +88,7 @@ class ChessSet {
             const progress = Math.min((t - move.t) / move.dur, 1.0);
             if (progress >= 1.0) {
                 if (move.captureIndex !== undefined) captured.add(move.captureIndex);
-                positions[move.pi] = { col: move.toCol, row: move.toRow, arc: 0 };
+                positions[move.pi] = { col: move.toCol, row: move.toRow, arc: 0, yRot: move.yRotateDeg || 0, xTilt: 0 };
             } else {
                 activeMove = move;
                 activeProgress = progress;
@@ -96,7 +96,9 @@ class ChessSet {
                 positions[move.pi] = {
                     col: from.col + (move.toCol - from.col) * progress,
                     row: from.row + (move.toRow - from.row) * progress,
-                    arc: Math.sin(progress * Math.PI) * 1.5
+                    arc: 0,
+                    yRot: (move.yRotateDeg || 0) * progress,
+                    xTilt: Math.sin(progress * Math.PI) * (move.xTiltDeg || 0)
                 };
             }
         }
@@ -104,13 +106,6 @@ class ChessSet {
         // Set the board texture and draw the board:
         gl.bindTexture(gl.TEXTURE_2D, this.boardTexture);
         this.drawItem(gl, shaderProgram, "cube");
-
-        // white queen (index 3): goes on its side, spins, returns upright -- cycles every 8s
-        const qT = t % 8.0;
-        let qTiltDeg = 0, qSpinDeg = 0;
-        if (qT < 1.0)      { qTiltDeg = qT * 90; }
-        else if (qT < 2.0) { qTiltDeg = 90; qSpinDeg = (qT - 1.0) * 360; }
-        else if (qT < 3.0) { qTiltDeg = (3.0 - qT) * 90; }
 
         // Set the white pieces texture and draw white pieces:
         gl.bindTexture(gl.TEXTURE_2D, this.whiteTexture);
@@ -120,16 +115,15 @@ class ChessSet {
             const isMoving = activeMove !== null && activeMove.pi === i;
             const flipDeg = (isMoving && activeMove.flip) ? activeProgress * 360 : 0;
 
-            // if (i === 3) {
-            //     // queen: tilt on Z axis, spin on Y axis, return
-            //     const m = mat4.create();
-            //     mat4.translate(m, m, [pos.col - 4.5, pos.arc, -pos.row + 4.5]);
-            //     mat4.rotate(m, m, qTiltDeg * Math.PI / 180, [0, 0, 1]);
-            //     mat4.rotate(m, m, qSpinDeg * Math.PI / 180, [0, 1, 0]);
-            //     this.drawWithMat(gl, shaderProgram, 'queen', m);
-            // } else {
+            if (pos.yRot !== 0 || pos.xTilt !== 0) {
+                const m = mat4.create();
+                mat4.translate(m, m, [pos.col - 4.5, pos.arc, -pos.row + 4.5]);
+                mat4.rotate(m, m, pos.yRot * Math.PI / 180, [0, 1, 0]);
+                mat4.rotate(m, m, pos.xTilt * Math.PI / 180, [0, 0, 1]);
+                this.drawWithMat(gl, shaderProgram, this.pieces[i].type, m);
+            } else {
                 this.drawAt(gl, shaderProgram, this.pieces[i].type, pos.col, pos.arc, pos.row, 1, 1, 1, flipDeg, 1, 0, 0);
-            // }
+            }
         }
 
         // Set the black pieces texture and draw black pieces:
@@ -161,6 +155,14 @@ class ChessSet {
                 mat4.rotate(m, m, Math.PI, [0, 1, 0]);
                 mat4.rotate(m, m, flipDeg * Math.PI / 180, [1, 0, 0]);
                 this.drawWithMat(gl, shaderProgram, this.pieces[i].type, m);
+            } else if (i === 20) {
+                let sx = 1;
+                if (t >= 2 && t <= 4) {
+                    sx = 1 + (t - 2) / 2;
+                } else if (t > 4) {
+                    sx = 2;
+                }
+                this.drawAt(gl, shaderProgram, 'king', pos.col, pos.arc, pos.row, sx, 1, 1, 180, 0, 1, 0);
             } else {
                 this.drawAt(gl, shaderProgram, this.pieces[i].type, pos.col, pos.arc, pos.row, 1, 1, 1, 180, 0, 1, 0);
             }

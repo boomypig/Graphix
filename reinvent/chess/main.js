@@ -57,7 +57,7 @@ async function main() {
 	}
 	setLightPosition(3, 10, 8);
 
-	const eye = [0, 28, 4];
+	const eye = [0, 22, 12];
 	const at = [0, 0, 0];
 	const up = [0, 0, -1];
 	setObservationView(gl, shaderProgram, eye, at, up, canvas.clientWidth / canvas.clientHeight)
