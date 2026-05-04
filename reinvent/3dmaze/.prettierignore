@@ -1,0 +1,11 @@
+# Ignore specific directories
+/build/
+/coverage/
+/vendor/
+/src/assets/ignored-folder/
+
+# Ignore specific file types within a directory
+/docs/**/*.html
+
+# Ignore a specific file
+*.js
