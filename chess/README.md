@@ -3,6 +3,8 @@
 A real-time 3D chess set rendered entirely with raw WebGL. No frameworks, no Three.js just shaders, matrix math, and a render loop.
 
 The scene features textured marble pieces and a wooden board, Phong shading with specular highlights, and an animated chess opening (Scandinavian Defense) that plays on loop with arc-based piece movement, front-flip animations, and an exploding capture effect.
+<img width="1130" height="706" alt="image" src="https://github.com/user-attachments/assets/a71b7ad1-4cc5-4daf-b9d1-4bde163a1574" />
+
 
 ## Features
 
