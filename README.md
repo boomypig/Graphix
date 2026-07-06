@@ -16,7 +16,7 @@ A collection of WebGL graphics demos and experiments, each in its own directory.
 | **fallinbalss** | Falling / bouncing circles with collision detection |
 | **balls2** | Ball collision simulation (variant) |
 | **iosballs** | Bouncing balls packaged as an installable PWA (service worker + manifest) |
-| **reinvent** | Scratch-pad rewrites -- red-vs-blue ball sim and a Bezier curve copy |
+
 
 ## Tech
 
