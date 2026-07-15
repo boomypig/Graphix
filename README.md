@@ -20,4 +20,4 @@ A collection of WebGL graphics demos and experiments, each in its own directory.
 
 ## Tech
 
-All demos run in the browser with vanilla JavaScript and the WebGL API. Shaders are written in GLSL (`.vs` / `.fs` files). No build step -- open any `index.html` in a local server to run.
+All demos run in the browser with vanilla JavaScript and the WebGL API. Shaders are written in GLSL (`.vs` / `.fs` files). No build step  open any `index.html` in a local server to run.
